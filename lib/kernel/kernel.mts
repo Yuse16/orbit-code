@@ -5,6 +5,15 @@ import { KernelHealth } from './kernel-health.mts'
 import { KernelLifecycle } from './kernel-lifecycle.mts'
 import { KernelRegistry } from './kernel-registry.mts'
 import { Scheduler } from './scheduler.mts'
+import { createKernelMissionRuntime, type KernelMissionRuntime } from './mission-runtime.mts'
+import type { DesktopClient } from '../mission-control/desktop-client.mts'
+import type {
+  GitState,
+  MissionGuidance,
+  ProjectDescriptor,
+  ProjectStage,
+  ProviderId,
+} from '../mission-control/types.mts'
 import type { KernelContext, KernelState, OrbitDNA } from './types.mts'
 
 export type KernelStateListener = () => void
@@ -27,13 +36,17 @@ export class Kernel {
   readonly lifecycle: KernelLifecycle
   readonly health: KernelHealth
   readonly registry: KernelRegistry
+  private readonly mission: KernelMissionRuntime
   private state: KernelState
   private startedAt: string | null = null
   private readonly listeners = new Set<KernelStateListener>()
   private readonly stopObserving: () => void
   private readonly now: () => string
 
-  constructor(now: () => string = () => new Date().toISOString()) {
+  constructor(
+    now: () => string = () => new Date().toISOString(),
+    options: { desktopClient?: DesktopClient; guidance?: MissionGuidance } = {},
+  ) {
     this.now = now
     this.events = new KernelEventBus()
     this.capabilities = new CapabilityRegistry(this.events)
@@ -41,6 +54,7 @@ export class Kernel {
     this.lifecycle = new KernelLifecycle(this.events, now)
     this.health = new KernelHealth(this.events)
     this.registry = new KernelRegistry()
+    this.mission = createKernelMissionRuntime({ ...options, now })
     ;(['capabilities', 'scheduler', 'dna', 'mission-control'] as const).forEach((module) =>
       this.registry.register(module),
     )
@@ -60,12 +74,39 @@ export class Kernel {
     environment: 'simulated',
   })
 
+  getMissionStore = () => this.mission.store
+
+  openProject(project: ProjectDescriptor): void {
+    this.mission.services.project.open(project)
+  }
+
+  updateGitStatus(git: Partial<GitState>): void {
+    this.mission.services.git.updateStatus(git)
+  }
+
+  setStage(stage: ProjectStage): void {
+    this.mission.services.tasks.setStage(stage)
+  }
+
+  activateProvider(primaryProviderId: ProviderId | null, secondaryProviderId?: ProviderId | null): void {
+    this.mission.services.providers.activate(primaryProviderId, secondaryProviderId)
+  }
+
+  connectProvider(providerId: ProviderId, detail?: string): void {
+    this.mission.services.providers.connect(providerId, detail)
+  }
+
+  disconnectProvider(providerId: ProviderId, detail?: string): void {
+    this.mission.services.providers.disconnect(providerId, detail)
+  }
+
   subscribe = (listener: KernelStateListener): (() => void) => {
     this.listeners.add(listener)
     return () => this.listeners.delete(listener)
   }
 
   start(): void {
+    this.mission.services.desktop.detect()
     this.lifecycle.start()
     this.registry.setStatus('capabilities', 'started')
     this.registry.setStatus('dna', 'started')
@@ -91,6 +132,7 @@ export class Kernel {
 
   dispose(): void {
     this.stop()
+    this.mission.dispose()
     this.stopObserving()
     this.listeners.clear()
   }

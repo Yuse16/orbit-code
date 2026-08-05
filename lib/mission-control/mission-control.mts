@@ -1,29 +1,27 @@
-import type { MissionControl, MissionControlOptions } from './contracts.mts'
-import { MockDesktopClient } from './desktop-client.mts'
-import { EventBus } from './event-bus.mts'
-import { createMockServices } from './mock-services.mts'
-import { installMissionObservers } from './observers.mts'
-import { MissionStore } from './store.mts'
+import { createMockKernel } from '../kernel/kernel-initializer.mts'
+import type { KernelInitializerOptions } from '../kernel/kernel-initializer.mts'
+import type { Kernel } from '../kernel/kernel.mts'
+import type { MissionControl } from './contracts.mts'
 
-/** Construye el grafo de Mission Control sin acoplarlo a React ni a Tauri. */
-export function createMockMissionControl(options: MissionControlOptions = {}): MissionControl {
-  const events = new EventBus()
-  const store = new MissionStore(events)
-  const now = options.now ?? (() => new Date().toISOString())
-  const desktopClient = options.desktopClient ?? new MockDesktopClient()
-  const services = createMockServices(events, desktopClient, now)
-  const stopObservers = installMissionObservers(events, now)
-
-  services.desktop.detect()
-  if (options.guidance) events.emit('GuidanceChanged', { guidance: options.guidance })
-
+/** Fachada de Mission Control: consulta y solicita al Kernel, nunca a servicios. */
+export function createMissionControl(kernel: Kernel): MissionControl {
   return {
-    events,
-    store,
-    services,
-    dispose: () => {
-      stopObservers()
-      store.dispose()
+    store: kernel.getMissionStore(),
+    actions: {
+      openProject: (project) => kernel.openProject(project),
+      updateGitStatus: (git) => kernel.updateGitStatus(git),
+      setStage: (stage) => kernel.setStage(stage),
+      activateProvider: (primaryProviderId, secondaryProviderId) =>
+        kernel.activateProvider(primaryProviderId, secondaryProviderId),
+      connectProvider: (providerId, detail) => kernel.connectProvider(providerId, detail),
+      disconnectProvider: (providerId, detail) => kernel.disconnectProvider(providerId, detail),
     },
+    getKernelContext: () => kernel.getContext(),
+    dispose: () => kernel.dispose(),
   }
+}
+
+/** Composición predeterminada: React recibe únicamente la fachada, sin tocar el Kernel. */
+export function createDefaultMissionControl(options: KernelInitializerOptions = {}): MissionControl {
+  return createMissionControl(createMockKernel(options))
 }

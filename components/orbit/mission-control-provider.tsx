@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import {
-  createMockMissionControl,
+  createDefaultMissionControl,
   type MissionControl,
   type MissionState,
 } from '@/lib/mission-control/index.mts'
@@ -16,22 +16,22 @@ import {
 const MissionControlContext = createContext<MissionControl | null>(null)
 
 function createOrbitMissionControl(): MissionControl {
-  const mission = createMockMissionControl()
+  const mission = createDefaultMissionControl()
 
-  mission.services.project.open({
+  mission.actions.openProject({
     id: 'u-zala',
     name: 'U-Zala',
     path: '/Users/usuario/Proyectos/U-Zala',
     framework: 'Next.js',
   })
-  mission.services.git.updateStatus({
+  mission.actions.updateGitStatus({
     branch: 'main',
     worktree: 'u-zala',
     status: 'changes-pending',
     pendingChanges: 3,
     lastSummary: '3 cambios simulados',
   })
-  mission.services.tasks.setStage('implementacion')
+  mission.actions.setStage('implementacion')
 
   return mission
 }

@@ -1,18 +1,18 @@
-import type { DesktopClient } from './desktop-client.mts'
 import type {
   AgentRole,
   AgentStatus,
   BuildStatus,
   GitState,
   LocalhostStatus,
-  MissionGuidance,
   NotificationLevel,
   ProjectDescriptor,
   ProjectStage,
   ProviderConnectionStatus,
   ProviderId,
 } from './types.mts'
+import type { DesktopClient } from './desktop-client.mts'
 
+/** Contratos internos que únicamente el Kernel compone en esta fase. */
 export interface ProjectService {
   open(project: ProjectDescriptor): void
   close(): void
@@ -45,23 +45,13 @@ export interface DesktopService {
   detect(): void
 }
 
-export interface MemoryService {
-  save(): void
-}
-
-export interface TaskService {
-  setStage(stage: ProjectStage): void
-  complete(taskId: string): void
-}
-
+export interface MemoryService { save(): void }
+export interface TaskService { setStage(stage: ProjectStage): void; complete(taskId: string): void }
 export interface BuildService {
   start(command: string): void
   finish(status: Extract<BuildStatus, 'succeeded' | 'failed'>, error?: string): void
 }
-
-export interface NotificationService {
-  raise(level: NotificationLevel, message: string): void
-}
+export interface NotificationService { raise(level: NotificationLevel, message: string): void }
 
 export interface MissionServices {
   project: ProjectService
@@ -76,15 +66,23 @@ export interface MissionServices {
   notifications: NotificationService
 }
 
-export interface MissionControl {
-  readonly events: import('./event-bus.mts').EventBus
-  readonly store: import('./store.mts').MissionStore
-  readonly services: MissionServices
-  dispose(): void
+/** Solicitudes de presentación que Mission Control delega al Kernel. */
+export interface MissionControlActions {
+  openProject(project: ProjectDescriptor): void
+  updateGitStatus(git: Partial<GitState>): void
+  setStage(stage: ProjectStage): void
+  activateProvider(primaryProviderId: ProviderId | null, secondaryProviderId?: ProviderId | null): void
+  connectProvider(providerId: ProviderId, detail?: string): void
+  disconnectProvider(providerId: ProviderId, detail?: string): void
 }
 
-export interface MissionControlOptions {
-  desktopClient?: DesktopClient
-  now?: () => string
-  guidance?: MissionGuidance
+/**
+ * Consumidor del Kernel: expone snapshots de MissionState y solicitudes de UI.
+ * No conoce ni conserva referencias a servicios de infraestructura.
+ */
+export interface MissionControl {
+  readonly store: import('./store.mts').MissionStore
+  readonly actions: MissionControlActions
+  getKernelContext(): import('../kernel/types.mts').KernelContext
+  dispose(): void
 }

@@ -193,11 +193,11 @@ function OrbitStateProvider({ children }: { children: ReactNode }) {
   const setProject = useCallback((id: string) => {
     const project = PROJECTS.find((candidate) => candidate.id === id)
     if (!project) return
-    mission.services.project.open({ ...project, framework: 'Next.js' })
+    mission.actions.openProject({ ...project, framework: 'Next.js' })
   }, [mission])
 
   const setStage = useCallback((stage: ProjectStage) => {
-    mission.services.tasks.setStage(stage)
+    mission.actions.setStage(stage)
   }, [mission])
 
   const toggleFolder = useCallback((id: string) => {
@@ -210,23 +210,23 @@ function OrbitStateProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const setBranch = useCallback((branch: string) => {
-    mission.services.git.updateStatus({ branch })
+    mission.actions.updateGitStatus({ branch })
   }, [mission])
 
   const setEngine = useCallback((engine: string) => {
     const providerId = PROVIDER_BY_ENGINE[engine] ?? null
-    mission.services.providers.activate(providerId)
+    mission.actions.activateProvider(providerId)
   }, [mission])
 
   const cycleConnection = useCallback(() => {
     const providerId = missionState.providers.primaryProviderId ?? 'codex'
     const provider = missionState.providers.providers.find((item) => item.id === providerId)
-    mission.services.providers.activate(providerId)
+    mission.actions.activateProvider(providerId)
     if (provider?.status === 'connected') {
-      mission.services.providers.disconnect(providerId, 'Desconectado (simulado)')
+      mission.actions.disconnectProvider(providerId, 'Desconectado (simulado)')
       return
     }
-    mission.services.providers.connect(providerId, 'Conectado (simulado)')
+    mission.actions.connectProvider(providerId, 'Conectado (simulado)')
   }, [mission, missionState.providers])
 
   const sendMessage = useCallback((text: string) => {
