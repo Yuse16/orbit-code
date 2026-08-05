@@ -8,6 +8,8 @@
     "build": "next build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
+    "test": "node --test tests/*.test.mts",
+    "test:coverage": "node --experimental-test-coverage --test tests/*.test.mts",
     "tauri": "tauri",
     "desktop:dev": "tauri dev",
     "desktop:build": "tauri build"
