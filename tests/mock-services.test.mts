@@ -53,6 +53,17 @@ test('DesktopClient abstrae la plataforma antes de que React consuma el estado',
   mission.dispose()
 })
 
+test('catálogo de providers inicia desconectado hasta que un servicio emite un evento', () => {
+  const mission = createMockMissionControl()
+  const providers = mission.store.getSnapshot().providers
+
+  assert.equal(providers.providers.length, 10)
+  assert.equal(providers.primaryProviderId, null)
+  assert.ok(providers.providers.every((provider) => provider.status === 'disconnected'))
+
+  mission.dispose()
+})
+
 test('observadores reaccionan al fallo de build sin crear dependencias circulares', () => {
   const mission = createMockMissionControl({ now: fixedNow })
 

@@ -19,6 +19,7 @@ export type { MissionEvent, MissionEventMap, MissionEventType } from './events.m
 export { createMockMissionControl } from './mission-control.mts'
 export { createMockServices } from './mock-services.mts'
 export { installMissionObservers } from './observers.mts'
+export { getActiveProvider, getMissionHeaderSummary } from './selectors.mts'
 export { createInitialMissionState, reduceMissionState } from './state.mts'
 export { MissionStore } from './store.mts'
 export * from './types.mts'
