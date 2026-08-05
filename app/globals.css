@@ -1,0 +1,139 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Orbit surfaces */
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-panel-3: var(--panel-3);
+  --color-titlebar: var(--titlebar);
+
+  /* Orbit accents */
+  --color-violet: var(--violet);
+  --color-violet-foreground: var(--violet-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  color-scheme: dark;
+  --radius: 0.625rem;
+
+  /* Deep blue-black base */
+  --background: oklch(0.16 0.018 265);
+  --foreground: oklch(0.93 0.008 260);
+
+  /* Graphite blue panels */
+  --panel: oklch(0.19 0.02 265);
+  --panel-2: oklch(0.22 0.022 265);
+  --panel-3: oklch(0.25 0.024 265);
+  --titlebar: oklch(0.14 0.016 265);
+
+  --card: oklch(0.2 0.02 265);
+  --card-foreground: oklch(0.93 0.008 260);
+  --popover: oklch(0.21 0.022 265);
+  --popover-foreground: oklch(0.93 0.008 260);
+
+  /* Electric blue primary */
+  --primary: oklch(0.63 0.185 255);
+  --primary-foreground: oklch(0.98 0.01 255);
+
+  --secondary: oklch(0.26 0.024 265);
+  --secondary-foreground: oklch(0.92 0.008 260);
+  --muted: oklch(0.24 0.02 265);
+  --muted-foreground: oklch(0.66 0.02 262);
+  --accent: oklch(0.28 0.03 262);
+  --accent-foreground: oklch(0.95 0.01 260);
+
+  /* Orbital violet */
+  --violet: oklch(0.62 0.2 295);
+  --violet-foreground: oklch(0.98 0.01 295);
+
+  --success: oklch(0.72 0.16 152);
+  --success-foreground: oklch(0.16 0.02 265);
+  --warning: oklch(0.82 0.14 85);
+  --warning-foreground: oklch(0.18 0.02 265);
+  --danger: oklch(0.63 0.21 25);
+  --danger-foreground: oklch(0.98 0.01 25);
+  --destructive: oklch(0.63 0.21 25);
+  --destructive-foreground: oklch(0.98 0.01 25);
+
+  --border: oklch(0.32 0.02 265 / 55%);
+  --input: oklch(0.3 0.02 265 / 60%);
+  --ring: oklch(0.63 0.185 255);
+
+  --chart-1: oklch(0.63 0.185 255);
+  --chart-2: oklch(0.62 0.2 295);
+  --chart-3: oklch(0.72 0.16 152);
+  --chart-4: oklch(0.82 0.14 85);
+  --chart-5: oklch(0.63 0.21 25);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Thin premium scrollbars */
+@layer utilities {
+  .orbit-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(0.4 0.02 265 / 60%) transparent;
+  }
+  .orbit-scroll::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .orbit-scroll::-webkit-scrollbar-thumb {
+    background: oklch(0.4 0.02 265 / 55%);
+    border-radius: 9999px;
+  }
+  .orbit-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}

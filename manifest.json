@@ -1,0 +1,72 @@
+{
+  "name": "Orbit Code documentation pack",
+  "version": "0.2.0",
+  "generatedAt": "2026-08-05T18:32:48.472727+00:00",
+  "changes": [
+    "Automatic safe model fallback",
+    "Session-required and quota-exhausted flows",
+    "Visual fallback chain for frontend",
+    "Incremental and daily project memory",
+    "23:59 consolidation and retroactive close",
+    "Contextual spatial welcome experience",
+    "Time-zone-aware first-use greeting",
+    "Provider availability normalization"
+  ],
+  "files": [
+    {
+      "file": "AGENTS.md",
+      "bytes": 7107,
+      "sha256": "86de59c6db93d4ec0550a9da0864b797d13b39df5ffe90efe66ae4f384d59897"
+    },
+    {
+      "file": "ARCHITECTURE.md",
+      "bytes": 11253,
+      "sha256": "357295f55659576c9a353729e093e6ea57facdd323afa64c89f77adcaf25ad52"
+    },
+    {
+      "file": "CONNECTIONS.md",
+      "bytes": 4979,
+      "sha256": "b175c72d88e7cd63efb3e8406972010571be4811d0b67da54cb9b16cad0d853e"
+    },
+    {
+      "file": "DECISIONS.md",
+      "bytes": 5292,
+      "sha256": "d3a25beaeb4f1b560a2cd416cbbdbbac816074556dec843a30f3c30ccd523ef2"
+    },
+    {
+      "file": "DEVELOPMENT.md",
+      "bytes": 5796,
+      "sha256": "4814718474f4995763d0b56675457ed7ca84d60494a5ada3085ea5f12b6a35e7"
+    },
+    {
+      "file": "MODEL_ROUTER.md",
+      "bytes": 7725,
+      "sha256": "7bc0ab2a976b4f7d28cdf53156b475067ad9e60452b407f06323eb71147896b8"
+    },
+    {
+      "file": "PROJECT.md",
+      "bytes": 7883,
+      "sha256": "86ecb59c76f3728f4bae8fd4538580d2bde42f8941991624a3c1817becbc585e"
+    },
+    {
+      "file": "README.md",
+      "bytes": 5845,
+      "sha256": "5ac8ff1240865fe0465f396b498c505502ba0ce42d9b43d1626e25f83658c56c"
+    },
+    {
+      "file": "ROADMAP.md",
+      "bytes": 5127,
+      "sha256": "75faadefd80cdca2a80f51783dab5f03ab4d0da9a8f03a343c945c41aee21cc0"
+    },
+    {
+      "file": "SECURITY.md",
+      "bytes": 6341,
+      "sha256": "3ab490720ba2744d815c8fc2caafc89f44a13963d8abce00ba9a6a4e98eadd9b"
+    },
+    {
+      "file": "UI_WORKFLOW.md",
+      "bytes": 7848,
+      "sha256": "6528408325e9ee7b823af3c55a0c6d73dfca999a0b56aed785925336133f56b1"
+    }
+  ]
+}
