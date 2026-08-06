@@ -12,6 +12,9 @@ import {
   getMissionHeaderSummary,
   type ProviderId,
 } from '@/lib/mission-control/index.mts'
+import { createDirector } from '@/lib/director/index.mts'
+import type { DecisionPolicyId, ExecutionPlan } from '@/lib/director/index.mts'
+import { createMockKernel } from '@/lib/kernel/index.mts'
 import {
   ENGINE_OPTIONS,
   FILE_TREE,
@@ -112,6 +115,9 @@ interface OrbitState {
   autoMode: boolean
   setAutoMode: (value: boolean) => void
 
+  directorPlan: ExecutionPlan | null
+  runDirector: (objective: string, policy: DecisionPolicyId) => void
+
   dockOpen: boolean
   setDockOpen: (value: boolean) => void
   dockExpanded: boolean
@@ -164,6 +170,9 @@ const QUICK_USER: Record<string, string> = {
 function OrbitStateProvider({ children }: { children: ReactNode }) {
   const mission = useMissionControl()
   const missionState = useMissionState()
+  const [kernel] = useState(() => createMockKernel())
+  const [director] = useState(() => createDirector())
+  const [directorPlan, setDirectorPlan] = useState<ExecutionPlan | null>(null)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     app: true,
     components: true,
@@ -250,6 +259,26 @@ function OrbitStateProvider({ children }: { children: ReactNode }) {
     setDockOpen(true)
   }, [])
 
+  const runDirector = useCallback((objective: string, policy: DecisionPolicyId) => {
+    const plan = director.decide({
+      request: { objective, policy },
+      kernel: kernel.getContextReader(),
+      currentStage: missionState.tasks.currentStage,
+    })
+    setDirectorPlan(plan)
+    setTab('director')
+    const userMessage: ChatMessage = { id: nextId(), author: 'user', time: now(), text: objective }
+    const reply: ChatMessage = {
+      id: nextId(),
+      author: 'orbit',
+      time: now(),
+      text: `Plan generado con política "${plan.policy}".`,
+      footnote: `Costo estimado $${plan.estimatedCost.toFixed(2)} · ${plan.parallelTasks.length + plan.sequentialTasks.length} tareas.`,
+    }
+    setMessages((previous) => [...previous, userMessage, reply])
+    setDockOpen(true)
+  }, [director, kernel, missionState.tasks.currentStage])
+
   const openFile = selectedFile ? findFileContent(selectedFile) : null
   const value = useMemo<OrbitState>(() => ({
     projectId: missionState.project.id,
@@ -285,6 +314,8 @@ function OrbitStateProvider({ children }: { children: ReactNode }) {
     quickAction,
     autoMode,
     setAutoMode,
+    directorPlan,
+    runDirector,
     dockOpen,
     setDockOpen,
     dockExpanded,
@@ -296,6 +327,7 @@ function OrbitStateProvider({ children }: { children: ReactNode }) {
     autoMode,
     cycleConnection,
     dialog,
+    directorPlan,
     dockExpanded,
     dockOpen,
     expanded,
@@ -304,6 +336,7 @@ function OrbitStateProvider({ children }: { children: ReactNode }) {
     openFile,
     providerStates,
     quickAction,
+    runDirector,
     selectFile,
     selectedFile,
     sendMessage,
