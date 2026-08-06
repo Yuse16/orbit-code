@@ -8,6 +8,7 @@ import { Scheduler } from './scheduler.mts'
 import { createKernelMissionRuntime, type KernelMissionRuntime } from './mission-runtime.mts'
 import type { Runtime } from '../runtime/runtime.mts'
 import type { RuntimeRegistry } from '../runtime/registry.mts'
+import type { WorkspaceAdapter } from '../runtime/adapters/workspace/index.mts'
 import type { DesktopClient } from '../mission-control/desktop-client.mts'
 import type {
   GitState,
@@ -85,7 +86,12 @@ export class Kernel {
 
   constructor(
     now: () => string = () => new Date().toISOString(),
-    options: { desktopClient?: DesktopClient; guidance?: MissionGuidance; runtime?: Runtime } = {},
+    options: {
+      desktopClient?: DesktopClient
+      guidance?: MissionGuidance
+      runtime?: Runtime
+      workspaceAdapter?: WorkspaceAdapter
+    } = {},
   ) {
     this.now = now
     this.events = new KernelEventBus()
@@ -114,6 +120,7 @@ export class Kernel {
     this.memoryPublisher = new MemoryPublisher(this.context)
     this.notificationPublisher = new NotificationPublisher(this.context)
     this.workspacePublisher = new WorkspacePublisher(this.context)
+    if (options.workspaceAdapter) options.workspaceAdapter.connect(this.workspacePublisher)
     this.healthPublisher = new HealthPublisher(this.context)
     this.dnaPublisher = new KernelContextPublisher<'dna'>(this.context, 'dna', createInitialDnaState())
     this.stopContextPublishing = this.events.onAny((event) => this.publishFromEvent(event))
