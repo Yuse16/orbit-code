@@ -29,8 +29,12 @@ test('El Kernel conecta el WorkspaceAdapter al WorkspacePublisher', () => {
   assert.equal(workspace.structureDetected, true)
   assert.equal(workspace.strategy, 'monorepo:pnpm-workspace')
   assert.ok(workspace.indexedAt)
+  assert.ok(workspace.index)
+  assert.equal(workspace.index.root, '/proyectos/orbit-code')
   assert.equal(adapter.getSnapshot()?.framework, 'next')
   assert.equal(adapter.getSnapshot()?.language, 'typescript')
+  assert.equal(adapter.getSnapshot()?.index?.folderCount, 2)
+  assert.equal(adapter.getSnapshot()?.index?.fileCount, 9)
   kernel.dispose()
 })
 

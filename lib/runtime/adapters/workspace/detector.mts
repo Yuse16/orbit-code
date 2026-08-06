@@ -1,5 +1,6 @@
 import { WorkspaceAnalyzer } from './analyzer.mts'
 import { WorkspaceEventBus } from './events.mts'
+import { indexWorkspace } from './indexer.mts'
 import { WorkspaceScanner } from './scanner.mts'
 import { createEmptyWorkspaceSnapshot, type WorkspaceSnapshot } from './snapshot.mts'
 
@@ -52,6 +53,7 @@ export class WorkspaceDetector {
       ...createEmptyWorkspaceSnapshot({ root }),
       ...analysis,
       detectedFiles: scan.detectedFiles,
+      index: indexWorkspace(scan.entries, { root, now: this.now }),
       timestamp: options.timestamp ?? this.now(),
     }
     this.events.emit('WorkspaceDetected', { snapshot })

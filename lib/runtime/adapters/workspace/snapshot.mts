@@ -1,3 +1,5 @@
+import type { WorkspaceIndexSnapshot } from './indexer.mts'
+
 export type WorkspaceDetectionValue = string
 
 /** Perfil tecnológico del proyecto abierto, generado por WorkspaceDiscovery. */
@@ -20,6 +22,8 @@ export interface WorkspaceSnapshot {
   detectedFiles: ReadonlyArray<string>
   confidence: number
   timestamp: string
+  /** Índice de archivos del workspace (árbol recursivo), si fue indexado. */
+  index: WorkspaceIndexSnapshot | null
 }
 
 /** Valores por defecto para un proyecto sin señales detectadas. */
@@ -47,6 +51,7 @@ export function createEmptyWorkspaceSnapshot(
     detectedFiles: [],
     confidence: 0,
     timestamp: '',
+    index: null,
     ...options,
     root: options.root,
   }

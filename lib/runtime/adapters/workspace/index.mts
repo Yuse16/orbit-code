@@ -27,6 +27,12 @@ export {
   type WorkspaceDetectorOptions,
 } from './detector.mts'
 export {
+  indexWorkspace,
+  type WorkspaceIndexNode,
+  type WorkspaceIndexOptions,
+  type WorkspaceIndexSnapshot,
+} from './indexer.mts'
+export {
   WorkspaceEvents,
   WorkspaceEventBus,
   type WorkspaceEvent,

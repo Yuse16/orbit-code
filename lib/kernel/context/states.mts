@@ -32,6 +32,7 @@ export const createInitialWorkspaceState = (): WorkspaceContextState => ({
   strategy: 'sin-configurar',
   structureDetected: false,
   indexedAt: null,
+  index: null,
 })
 
 export const createInitialProviderState = (): ProviderState => createInitialMissionState().providers

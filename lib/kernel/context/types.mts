@@ -17,6 +17,7 @@ import type {
   RuntimeLifecycleStatus,
 } from '../../runtime/types.mts'
 import type { SystemInfo } from '../../runtime/adapters/system/index.mts'
+import type { WorkspaceIndexSnapshot } from '../../runtime/adapters/workspace/indexer.mts'
 import type {
   CapabilityState,
   KernelHealthStatus,
@@ -63,6 +64,8 @@ export interface WorkspaceContextState {
   strategy: string
   structureDetected: boolean
   indexedAt: string | null
+  /** Índice de archivos del workspace publicado por el adaptador real. */
+  index: WorkspaceIndexSnapshot | null
 }
 
 export interface HealthContextState {

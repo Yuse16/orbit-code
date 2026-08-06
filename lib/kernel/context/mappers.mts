@@ -58,5 +58,6 @@ export function toWorkspaceContextState(
     strategy: dna?.workspaceStrategy ?? 'sin-configurar',
     structureDetected: Boolean(dna),
     indexedAt,
+    index: null,
   }
 }

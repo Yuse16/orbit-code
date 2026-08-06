@@ -29,6 +29,7 @@ export function toWorkspaceContextState(snapshot: WorkspaceSnapshot): WorkspaceC
           : 'sin-configurar',
     structureDetected: structured,
     indexedAt: snapshot.timestamp || null,
+    index: snapshot.index,
   }
 }
 
