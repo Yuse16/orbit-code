@@ -11,6 +11,7 @@ import type {
   ProviderId,
 } from './types.mts'
 import type { DesktopClient } from './desktop-client.mts'
+import type { KernelSnapshot } from '../kernel/context/types.mts'
 
 /** Contratos internos que únicamente el Kernel compone en esta fase. */
 export interface ProjectService {
@@ -69,6 +70,7 @@ export interface MissionServices {
 /** Solicitudes de presentación que Mission Control delega al Kernel. */
 export interface MissionControlActions {
   openProject(project: ProjectDescriptor): void
+  openFolder(): Promise<void>
   updateGitStatus(git: Partial<GitState>): void
   setStage(stage: ProjectStage): void
   activateProvider(primaryProviderId: ProviderId | null, secondaryProviderId?: ProviderId | null): void
@@ -84,5 +86,7 @@ export interface MissionControl {
   readonly store: import('./store.mts').MissionStore
   readonly actions: MissionControlActions
   getKernelContext(): import('../kernel/types.mts').KernelContext
+  getKernelContextSnapshot(): KernelSnapshot
+  subscribeKernelContext(listener: () => void): () => void
   dispose(): void
 }

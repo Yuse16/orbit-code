@@ -12,6 +12,7 @@ import {
   type MissionControl,
   type MissionState,
 } from '@/lib/mission-control/index.mts'
+import type { KernelSnapshot } from '@/lib/kernel/context/types.mts'
 
 const MissionControlContext = createContext<MissionControl | null>(null)
 
@@ -54,5 +55,14 @@ export function useMissionState(): MissionState {
     mission.store.subscribe,
     mission.store.getSnapshot,
     mission.store.getSnapshot,
+  )
+}
+
+export function useKernelContext(): KernelSnapshot {
+  const mission = useMissionControl()
+  return useSyncExternalStore(
+    mission.subscribeKernelContext,
+    mission.getKernelContextSnapshot,
+    mission.getKernelContextSnapshot,
   )
 }

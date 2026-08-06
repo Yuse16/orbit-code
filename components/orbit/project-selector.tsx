@@ -13,7 +13,7 @@ import {
 } from './primitives'
 
 export function ProjectSelector() {
-  const { projectId, setProject, projectName, projectPath } = useOrbit()
+  const { projectId, setProject, openFolder, projectName, projectPath } = useOrbit()
 
   return (
     <Dropdown>
@@ -50,7 +50,7 @@ export function ProjectSelector() {
           </DropdownItem>
         ))}
         <DropdownSeparator />
-        <DropdownItem icon={<Plus className="size-4" />}>
+        <DropdownItem icon={<Plus className="size-4" />} onSelect={() => void openFolder()}>
           Abrir otro proyecto
         </DropdownItem>
       </DropdownContent>

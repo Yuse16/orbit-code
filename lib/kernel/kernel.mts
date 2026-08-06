@@ -21,6 +21,7 @@ import type {
 import type { KernelContext as LegacyKernelContext, KernelState, OrbitDNA } from './types.mts'
 import { KernelContext } from './context/context.mts'
 import type { KernelSnapshot } from './context/types.mts'
+import type { WorkspaceContextState } from './context/types.mts'
 import { KernelContextReader } from './context/reader.mts'
 import { KernelContextPublisher } from './context/publisher.mts'
 import {
@@ -80,6 +81,7 @@ export class Kernel {
   private readonly healthPublisher: HealthPublisher
   private readonly dnaPublisher: KernelContextPublisher<'dna'>
   private readonly workspaceAdapter: WorkspaceAdapter | null
+  private workspaceState: WorkspaceContextState | null = null
   private readonly stopContextPublishing: () => void
   private readonly stopMissionContext: () => void
   private stopRuntimeContext: (() => void) | null = null
@@ -163,6 +165,24 @@ export class Kernel {
 
   openProject(project: ProjectDescriptor): void {
     this.mission.services.project.open(project)
+  }
+
+  async openFolder(): Promise<void> {
+    const result = await this.mission.services.desktop.client.openFolder()
+    if (!result) return
+    this.workspaceState = {
+      strategy: 'single-project',
+      structureDetected: true,
+      indexedAt: result.index.indexedAt,
+      index: result.index,
+    }
+    this.openProject({
+      id: `workspace:${result.root}`,
+      name: result.projectName,
+      path: result.root,
+      framework: 'unknown',
+    })
+    this.workspacePublisher.publish(this.workspaceState)
   }
 
   updateGitStatus(git: Partial<GitState>): void {
@@ -285,6 +305,10 @@ export class Kernel {
     const snapshot = this.workspaceAdapter?.getSnapshot() ?? null
     if (snapshot) {
       this.workspacePublisher.publish(toWorkspaceContextState(snapshot))
+      return
+    }
+    if (this.workspaceState) {
+      this.workspacePublisher.publish(this.workspaceState)
       return
     }
     const dna = this.context.read('dna')?.dna ?? null

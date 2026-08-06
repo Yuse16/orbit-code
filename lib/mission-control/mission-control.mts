@@ -5,10 +5,12 @@ import type { MissionControl } from './contracts.mts'
 
 /** Fachada de Mission Control: consulta y solicita al Kernel, nunca a servicios. */
 export function createMissionControl(kernel: Kernel): MissionControl {
+  const contextReader = kernel.getContextReader()
   return {
     store: kernel.getMissionStore(),
     actions: {
       openProject: (project) => kernel.openProject(project),
+      openFolder: () => kernel.openFolder(),
       updateGitStatus: (git) => kernel.updateGitStatus(git),
       setStage: (stage) => kernel.setStage(stage),
       activateProvider: (primaryProviderId, secondaryProviderId) =>
@@ -17,6 +19,8 @@ export function createMissionControl(kernel: Kernel): MissionControl {
       disconnectProvider: (providerId, detail) => kernel.disconnectProvider(providerId, detail),
     },
     getKernelContext: () => kernel.getContext(),
+    getKernelContextSnapshot: () => contextReader.getSnapshot(),
+    subscribeKernelContext: (listener) => contextReader.subscribe(listener),
     dispose: () => kernel.dispose(),
   }
 }

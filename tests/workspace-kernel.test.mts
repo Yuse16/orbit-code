@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Kernel } from '../lib/kernel/index.mts'
+import { MockDesktopClient } from '../lib/mission-control/index.mts'
 import { createMockOrbitDNA } from '../lib/kernel/index.mts'
 import {
   WorkspaceAdapter,
@@ -60,6 +61,42 @@ test('El índice real del adaptador sobrevive a un loadDNA posterior', () => {
   assert.ok(workspace.index)
   assert.equal(workspace.index.root, '/proyectos/orbit-code')
   assert.equal(workspace.index.fileCount, 9)
+  kernel.dispose()
+})
+
+test('El Kernel compone el workspace recibido por el puente DesktopClient', async () => {
+  const desktopClient = new (class extends MockDesktopClient {
+    override async openFolder() {
+      return {
+        root: '/proyectos/real',
+        projectName: 'real',
+        index: {
+          root: '/proyectos/real',
+          nodes: [
+            {
+              id: 'src',
+              name: 'src',
+              path: 'src',
+              type: 'folder' as const,
+              ext: null,
+              children: [],
+            },
+          ],
+          folderCount: 1,
+          fileCount: 0,
+          depth: 1,
+          indexedAt: '2026-08-06T00:00:00.000Z',
+        },
+      }
+    }
+  })()
+  const kernel = new Kernel(() => 'now', { desktopClient })
+
+  await kernel.openFolder()
+
+  assert.equal(kernel.getContextSnapshot().mission.project.path, '/proyectos/real')
+  assert.equal(kernel.getContextSnapshot().workspace.index?.root, '/proyectos/real')
+  assert.equal(kernel.getContextSnapshot().workspace.index?.folderCount, 1)
   kernel.dispose()
 })
 
