@@ -6,6 +6,8 @@ import { KernelLifecycle } from './kernel-lifecycle.mts'
 import { KernelRegistry } from './kernel-registry.mts'
 import { Scheduler } from './scheduler.mts'
 import { createKernelMissionRuntime, type KernelMissionRuntime } from './mission-runtime.mts'
+import type { Runtime } from '../runtime/runtime.mts'
+import type { RuntimeRegistry } from '../runtime/registry.mts'
 import type { DesktopClient } from '../mission-control/desktop-client.mts'
 import type {
   GitState,
@@ -37,6 +39,7 @@ export class Kernel {
   readonly health: KernelHealth
   readonly registry: KernelRegistry
   private readonly mission: KernelMissionRuntime
+  private readonly runtime: Runtime | null
   private state: KernelState
   private startedAt: string | null = null
   private readonly listeners = new Set<KernelStateListener>()
@@ -45,7 +48,7 @@ export class Kernel {
 
   constructor(
     now: () => string = () => new Date().toISOString(),
-    options: { desktopClient?: DesktopClient; guidance?: MissionGuidance } = {},
+    options: { desktopClient?: DesktopClient; guidance?: MissionGuidance; runtime?: Runtime } = {},
   ) {
     this.now = now
     this.events = new KernelEventBus()
@@ -54,6 +57,7 @@ export class Kernel {
     this.lifecycle = new KernelLifecycle(this.events, now)
     this.health = new KernelHealth(this.events)
     this.registry = new KernelRegistry()
+    this.runtime = options.runtime ?? null
     this.mission = createKernelMissionRuntime({ ...options, now })
     ;(['capabilities', 'scheduler', 'dna', 'mission-control'] as const).forEach((module) =>
       this.registry.register(module),
@@ -75,6 +79,8 @@ export class Kernel {
   })
 
   getMissionStore = () => this.mission.store
+
+  getRuntimeRegistry = (): RuntimeRegistry | null => this.runtime?.registry ?? null
 
   openProject(project: ProjectDescriptor): void {
     this.mission.services.project.open(project)
@@ -112,6 +118,7 @@ export class Kernel {
     this.registry.setStatus('dna', 'started')
     this.registry.setStatus('mission-control', 'started')
     this.scheduler.start()
+    this.runtime?.start()
     this.refreshModules()
     this.health.healthy()
   }
@@ -122,6 +129,7 @@ export class Kernel {
     this.registry.setStatus('capabilities', 'stopped')
     this.registry.setStatus('dna', 'stopped')
     this.registry.setStatus('mission-control', 'stopped')
+    this.runtime?.stop()
     this.refreshModules()
     this.lifecycle.stop()
   }
@@ -133,6 +141,7 @@ export class Kernel {
   dispose(): void {
     this.stop()
     this.mission.dispose()
+    this.runtime?.dispose()
     this.stopObserving()
     this.listeners.clear()
   }

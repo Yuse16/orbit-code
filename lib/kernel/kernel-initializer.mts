@@ -1,6 +1,7 @@
 import { createMockOrbitDNA } from './dna.mts'
 import { Kernel } from './kernel.mts'
 import type { OrbitDNA } from './types.mts'
+import { createDefaultRuntime, type Runtime } from '../runtime/runtime.mts'
 import type { DesktopClient } from '../mission-control/desktop-client.mts'
 import type { MissionGuidance } from '../mission-control/types.mts'
 
@@ -9,6 +10,7 @@ export interface KernelInitializerOptions {
   dna?: OrbitDNA
   desktopClient?: DesktopClient
   guidance?: MissionGuidance
+  runtime?: Runtime
 }
 
 /** Construye y arranca el grafo simulado antes de que cualquier consumidor exista. */
@@ -23,6 +25,7 @@ export class KernelInitializer {
     const kernel = new Kernel(this.options.now, {
       desktopClient: this.options.desktopClient,
       guidance: this.options.guidance,
+      runtime: this.options.runtime ?? createDefaultRuntime({ now: this.options.now }),
     })
     kernel.loadDNA(this.options.dna ?? createMockOrbitDNA())
     kernel.start()
