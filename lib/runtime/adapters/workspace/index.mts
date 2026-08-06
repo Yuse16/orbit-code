@@ -1,6 +1,5 @@
 export {
   WorkspaceAdapter,
-  toWorkspaceContextState,
   type WorkspaceAdapterOptions,
 } from './adapter.mts'
 export {

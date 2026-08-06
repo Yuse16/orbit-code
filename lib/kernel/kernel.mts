@@ -42,6 +42,7 @@ import {
   toRuntimeContextState,
   toSchedulerContextState,
   toWorkspaceContextState,
+  toWorkspaceContextStateFromDna,
 } from './context/mappers.mts'
 
 export type KernelStateListener = () => void
@@ -78,6 +79,7 @@ export class Kernel {
   private readonly workspacePublisher: WorkspacePublisher
   private readonly healthPublisher: HealthPublisher
   private readonly dnaPublisher: KernelContextPublisher<'dna'>
+  private readonly workspaceAdapter: WorkspaceAdapter | null
   private readonly stopContextPublishing: () => void
   private readonly stopMissionContext: () => void
   private stopRuntimeContext: (() => void) | null = null
@@ -125,7 +127,8 @@ export class Kernel {
     this.memoryPublisher = new MemoryPublisher(this.context)
     this.notificationPublisher = new NotificationPublisher(this.context)
     this.workspacePublisher = new WorkspacePublisher(this.context)
-    if (options.workspaceAdapter) options.workspaceAdapter.connect(this.workspacePublisher)
+    this.workspaceAdapter = options.workspaceAdapter ?? null
+    if (this.workspaceAdapter) this.workspaceAdapter.connect(this.workspacePublisher)
     if (options.systemAdapter) options.systemAdapter.connect(this.systemPublisher)
     this.healthPublisher = new HealthPublisher(this.context)
     this.dnaPublisher = new KernelContextPublisher<'dna'>(this.context, 'dna', createInitialDnaState())
@@ -279,9 +282,14 @@ export class Kernel {
   }
 
   private publishWorkspace(): void {
+    const snapshot = this.workspaceAdapter?.getSnapshot() ?? null
+    if (snapshot) {
+      this.workspacePublisher.publish(toWorkspaceContextState(snapshot))
+      return
+    }
     const dna = this.context.read('dna')?.dna ?? null
     this.workspacePublisher.publish(
-      toWorkspaceContextState(dna, dna ? this.now() : null),
+      toWorkspaceContextStateFromDna(dna, dna ? this.now() : null),
     )
   }
 

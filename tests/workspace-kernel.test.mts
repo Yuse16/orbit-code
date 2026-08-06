@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Kernel } from '../lib/kernel/index.mts'
+import { createMockOrbitDNA } from '../lib/kernel/index.mts'
 import {
   WorkspaceAdapter,
   WorkspaceDetector,
@@ -43,6 +44,22 @@ test('El Kernel sin adaptador mantiene el workspace derivado del DNA', () => {
   kernel.start()
   const workspace = kernel.getContextSnapshot().workspace
   assert.equal(workspace.structureDetected, false)
+  kernel.dispose()
+})
+
+test('El índice real del adaptador sobrevive a un loadDNA posterior', () => {
+  const adapter = realAdapter()
+  const kernel = new Kernel(() => 'now', { workspaceAdapter: adapter })
+  kernel.start()
+  adapter.detect()
+  kernel.loadDNA(createMockOrbitDNA())
+
+  const workspace = kernel.getContextSnapshot().workspace
+  assert.equal(workspace.structureDetected, true)
+  assert.equal(workspace.strategy, 'monorepo:pnpm-workspace')
+  assert.ok(workspace.index)
+  assert.equal(workspace.index.root, '/proyectos/orbit-code')
+  assert.equal(workspace.index.fileCount, 9)
   kernel.dispose()
 })
 

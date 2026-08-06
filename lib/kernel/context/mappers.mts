@@ -1,5 +1,6 @@
 import type { MissionState } from '../../mission-control/types.mts'
 import type { Runtime } from '../../runtime/runtime.mts'
+import type { WorkspaceSnapshot } from '../../runtime/adapters/workspace/snapshot.mts'
 import type { CapabilityRegistry } from '../capability-registry.mts'
 import type { Scheduler } from '../scheduler.mts'
 import type { CapabilityState, OrbitDNA, SchedulerState, SchedulerStatus } from '../types.mts'
@@ -50,7 +51,24 @@ export function toCapabilitiesContextState(
   return { items: registry.list(), lastDiscoveryAt }
 }
 
-export function toWorkspaceContextState(
+/** Proyección del snapshot del adaptador al dominio `workspace` del KernelContext. */
+export function toWorkspaceContextState(snapshot: WorkspaceSnapshot): WorkspaceContextState {
+  const structured = snapshot.detectedFiles.length > 0
+  return {
+    strategy:
+      snapshot.monorepo !== 'none'
+        ? `monorepo:${snapshot.monorepo}`
+        : structured
+          ? 'single-project'
+          : 'sin-configurar',
+    structureDetected: structured,
+    indexedAt: snapshot.timestamp || null,
+    index: snapshot.index,
+  }
+}
+
+/** Proyección por defecto del dominio `workspace` cuando no hay adaptador real (DNA). */
+export function toWorkspaceContextStateFromDna(
   dna: OrbitDNA | null,
   indexedAt: string | null,
 ): WorkspaceContextState {

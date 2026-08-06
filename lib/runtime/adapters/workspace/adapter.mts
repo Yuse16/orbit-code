@@ -1,6 +1,6 @@
 import type { RuntimeAdapter, RuntimeAdapterHost } from '../../adapter.mts'
 import type { WorkspacePublisher } from '../../../kernel/context/publishers.mts'
-import type { WorkspaceContextState } from '../../../kernel/context/types.mts'
+import { toWorkspaceContextState } from '../../../kernel/context/mappers.mts'
 import type {
   AdapterLifecycleStatus,
   RuntimeAdapterId,
@@ -10,28 +10,11 @@ import type {
 import { WorkspaceDetector } from './detector.mts'
 import { WorkspaceEventBus } from './events.mts'
 import type { WorkspaceSnapshot } from './snapshot.mts'
-import { NONE } from './snapshot.mts'
 
 const WORKSPACE_CAPABILITIES: ReadonlyArray<{ id: string; name: string }> = [
   { id: 'DetectStructure', name: 'Detectar estructura' },
   { id: 'IndexFiles', name: 'Indexar archivos' },
 ]
-
-/** Proyección del snapshot al dominio `workspace` del KernelContext. */
-export function toWorkspaceContextState(snapshot: WorkspaceSnapshot): WorkspaceContextState {
-  const structured = snapshot.detectedFiles.length > 0
-  return {
-    strategy:
-      snapshot.monorepo !== NONE
-        ? `monorepo:${snapshot.monorepo}`
-        : structured
-          ? 'single-project'
-          : 'sin-configurar',
-    structureDetected: structured,
-    indexedAt: snapshot.timestamp || null,
-    index: snapshot.index,
-  }
-}
 
 export interface WorkspaceAdapterOptions {
   detector?: WorkspaceDetector

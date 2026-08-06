@@ -19,6 +19,13 @@ export interface WorkspaceIndexSnapshot {
   indexedAt: string
 }
 
+/**
+ * Límites del índice (por diseño, ver docs/runtime/WORKSPACE_DISCOVERY.md):
+ * - Solo nombres y rutas; NUNCA el contenido de los archivos.
+ * - Profundidad y directorios ignorados heredados del escáner
+ *   (`maxDepth`, `ignoredDirectories`, `DEFAULT_IGNORED_DIRECTORIES`).
+ */
+
 export interface WorkspaceIndexOptions {
   root: string
   now?: () => string
