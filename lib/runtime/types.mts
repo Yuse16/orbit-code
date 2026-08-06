@@ -19,6 +19,7 @@ export type RuntimeAdapterId =
   | 'supabase'
   | 'browser'
   | 'workspace'
+  | 'system'
 
 export interface RuntimeCapabilityDescriptor {
   id: string

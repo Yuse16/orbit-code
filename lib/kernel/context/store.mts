@@ -9,6 +9,7 @@ import {
   createInitialProviderState,
   createInitialRuntimeState,
   createInitialSchedulerState,
+  createInitialSystemState,
   createInitialWorkspaceState,
 } from './states.mts'
 import type {
@@ -29,6 +30,8 @@ export class KernelContextStore {
   private readonly events: KernelContextEventBus
   private readonly now: () => string
   private version = 0
+  private cachedSnapshot: KernelSnapshot | null = null
+  private cachedVersion = -1
 
   constructor(events: KernelContextEventBus, now: () => string) {
     this.events = events
@@ -38,6 +41,7 @@ export class KernelContextStore {
   register<D extends KernelDomainId>(domain: D, initialState: KernelState[D]): void {
     if (this.domains.has(domain)) return
     this.domains.set(domain, initialState)
+    this.cachedSnapshot = null
     this.events.emit('PublisherRegistered', { domain, registeredAt: this.now() })
   }
 
@@ -71,8 +75,12 @@ export class KernelContextStore {
   }
 
   getSnapshot(): KernelSnapshot {
-    return {
+    if (this.cachedSnapshot && this.cachedVersion === this.version) {
+      return this.cachedSnapshot
+    }
+    const snapshot: KernelSnapshot = {
       runtime: this.readDomain('runtime') ?? createInitialRuntimeState(),
+      system: this.readDomain('system') ?? createInitialSystemState(),
       mission: this.readDomain('mission') ?? createInitialMissionContextState(),
       scheduler: this.readDomain('scheduler') ?? createInitialSchedulerState(),
       workspace: this.readDomain('workspace') ?? createInitialWorkspaceState(),
@@ -85,6 +93,9 @@ export class KernelContextStore {
       timestamp: this.now(),
       version: this.version,
     }
+    this.cachedSnapshot = snapshot
+    this.cachedVersion = this.version
+    return snapshot
   }
 
   subscribe(listener: KernelContextListener): () => void {

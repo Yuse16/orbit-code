@@ -3,6 +3,7 @@ import { Kernel } from './kernel.mts'
 import type { OrbitDNA } from './types.mts'
 import { createDefaultRuntime, type Runtime } from '../runtime/runtime.mts'
 import type { WorkspaceAdapter } from '../runtime/adapters/workspace/index.mts'
+import type { DesktopSystemAdapter } from '../runtime/adapters/system/index.mts'
 import type { DesktopClient } from '../mission-control/desktop-client.mts'
 import type { MissionGuidance } from '../mission-control/types.mts'
 
@@ -12,6 +13,7 @@ export interface KernelInitializerOptions {
   desktopClient?: DesktopClient
   guidance?: MissionGuidance
   runtime?: Runtime
+  systemAdapter?: DesktopSystemAdapter
   workspaceAdapter?: WorkspaceAdapter
 }
 
@@ -28,6 +30,7 @@ export class KernelInitializer {
       desktopClient: this.options.desktopClient,
       guidance: this.options.guidance,
       runtime: this.options.runtime ?? createDefaultRuntime({ now: this.options.now }),
+      systemAdapter: this.options.systemAdapter,
       workspaceAdapter: this.options.workspaceAdapter,
     })
     kernel.loadDNA(this.options.dna ?? createMockOrbitDNA())

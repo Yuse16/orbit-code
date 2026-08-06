@@ -1,5 +1,6 @@
 import { createInitialMissionState } from '../../mission-control/state.mts'
 import type { MemoryState, NotificationState, ProviderState } from '../../mission-control/types.mts'
+import { createEmptySystemInfo } from '../../runtime/adapters/system/index.mts'
 import type { CapabilityState, SchedulerState } from '../types.mts'
 import { toMissionContextState } from './mappers.mts'
 import type {
@@ -7,6 +8,7 @@ import type {
   HealthContextState,
   MissionContextState,
   RuntimeContextState,
+  SystemContextState,
   WorkspaceContextState,
 } from './types.mts'
 
@@ -18,6 +20,8 @@ export const createInitialRuntimeState = (): RuntimeContextState => ({
   availableCapabilities: 0,
   totalCapabilities: 0,
 })
+
+export const createInitialSystemState = (): SystemContextState => createEmptySystemInfo()
 
 export const createInitialMissionContextState = (): MissionContextState =>
   toMissionContextState(createInitialMissionState())

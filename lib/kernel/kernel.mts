@@ -9,6 +9,7 @@ import { createKernelMissionRuntime, type KernelMissionRuntime } from './mission
 import type { Runtime } from '../runtime/runtime.mts'
 import type { RuntimeRegistry } from '../runtime/registry.mts'
 import type { WorkspaceAdapter } from '../runtime/adapters/workspace/index.mts'
+import type { DesktopSystemAdapter } from '../runtime/adapters/system/index.mts'
 import type { DesktopClient } from '../mission-control/desktop-client.mts'
 import type {
   GitState,
@@ -31,6 +32,7 @@ import {
   ProviderPublisher,
   RuntimePublisher,
   SchedulerPublisher,
+  SystemPublisher,
   WorkspacePublisher,
 } from './context/publishers.mts'
 import { createInitialDnaState } from './context/states.mts'
@@ -66,6 +68,7 @@ export class Kernel {
   private readonly runtime: Runtime | null
   private readonly context: KernelContext
   private readonly runtimePublisher: RuntimePublisher
+  private readonly systemPublisher: SystemPublisher
   private readonly missionPublisher: MissionPublisher
   private readonly schedulerPublisher: SchedulerPublisher
   private readonly capabilityPublisher: CapabilityPublisher
@@ -90,6 +93,7 @@ export class Kernel {
       desktopClient?: DesktopClient
       guidance?: MissionGuidance
       runtime?: Runtime
+      systemAdapter?: DesktopSystemAdapter
       workspaceAdapter?: WorkspaceAdapter
     } = {},
   ) {
@@ -113,6 +117,7 @@ export class Kernel {
     this.stopObserving = this.events.onAny((event) => this.apply(event))
     this.context = new KernelContext(now)
     this.runtimePublisher = new RuntimePublisher(this.context)
+    this.systemPublisher = new SystemPublisher(this.context)
     this.missionPublisher = new MissionPublisher(this.context)
     this.schedulerPublisher = new SchedulerPublisher(this.context)
     this.capabilityPublisher = new CapabilityPublisher(this.context)
@@ -121,6 +126,7 @@ export class Kernel {
     this.notificationPublisher = new NotificationPublisher(this.context)
     this.workspacePublisher = new WorkspacePublisher(this.context)
     if (options.workspaceAdapter) options.workspaceAdapter.connect(this.workspacePublisher)
+    if (options.systemAdapter) options.systemAdapter.connect(this.systemPublisher)
     this.healthPublisher = new HealthPublisher(this.context)
     this.dnaPublisher = new KernelContextPublisher<'dna'>(this.context, 'dna', createInitialDnaState())
     this.stopContextPublishing = this.events.onAny((event) => this.publishFromEvent(event))

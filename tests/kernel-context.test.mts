@@ -12,12 +12,14 @@ import {
   ProviderPublisher,
   RuntimePublisher,
   SchedulerPublisher,
+  SystemPublisher,
   WorkspacePublisher,
 } from '../lib/kernel/context/index.mts'
 
-test('KernelContext registra los 10 dominios y produce un snapshot único', () => {
+test('KernelContext registra los 11 dominios y produce un snapshot único', () => {
   const context = new KernelContext(() => '2026-01-01T00:00:00.000Z')
   new RuntimePublisher(context)
+  new SystemPublisher(context)
   new MissionPublisher(context)
   new SchedulerPublisher(context)
   new WorkspacePublisher(context)
@@ -39,6 +41,7 @@ test('KernelContext registra los 10 dominios y produce un snapshot único', () =
     'providers',
     'runtime',
     'scheduler',
+    'system',
     'timestamp',
     'version',
     'workspace',

@@ -16,6 +16,7 @@ import type {
   RuntimeHealthStatus,
   RuntimeLifecycleStatus,
 } from '../../runtime/types.mts'
+import type { SystemInfo } from '../../runtime/adapters/system/index.mts'
 import type {
   CapabilityState,
   KernelHealthStatus,
@@ -25,6 +26,7 @@ import type {
 
 export type KernelDomainId =
   | 'runtime'
+  | 'system'
   | 'mission'
   | 'scheduler'
   | 'workspace'
@@ -43,6 +45,8 @@ export interface RuntimeContextState {
   availableCapabilities: number
   totalCapabilities: number
 }
+
+export type SystemContextState = SystemInfo
 
 export interface MissionContextState {
   project: ProjectState
@@ -73,6 +77,7 @@ export interface DnaContextState {
 /** Registro dominio -> estado: la fuente de verdad unificada de Orbit. */
 export interface KernelState {
   runtime: RuntimeContextState
+  system: SystemContextState
   mission: MissionContextState
   scheduler: SchedulerState
   workspace: WorkspaceContextState

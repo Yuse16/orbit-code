@@ -9,12 +9,19 @@ import {
   createInitialProviderState,
   createInitialRuntimeState,
   createInitialSchedulerState,
+  createInitialSystemState,
   createInitialWorkspaceState,
 } from './states.mts'
 
 export class RuntimePublisher extends KernelContextPublisher<'runtime'> {
   constructor(context: KernelContext) {
     super(context, 'runtime', createInitialRuntimeState())
+  }
+}
+
+export class SystemPublisher extends KernelContextPublisher<'system'> {
+  constructor(context: KernelContext) {
+    super(context, 'system', createInitialSystemState())
   }
 }
 
