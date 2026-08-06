@@ -16,7 +16,30 @@ import type {
   ProjectStage,
   ProviderId,
 } from '../mission-control/types.mts'
-import type { KernelContext, KernelState, OrbitDNA } from './types.mts'
+import type { KernelContext as LegacyKernelContext, KernelState, OrbitDNA } from './types.mts'
+import { KernelContext } from './context/context.mts'
+import type { KernelSnapshot } from './context/types.mts'
+import { KernelContextReader } from './context/reader.mts'
+import { KernelContextPublisher } from './context/publisher.mts'
+import {
+  CapabilityPublisher,
+  HealthPublisher,
+  MemoryPublisher,
+  MissionPublisher,
+  NotificationPublisher,
+  ProviderPublisher,
+  RuntimePublisher,
+  SchedulerPublisher,
+  WorkspacePublisher,
+} from './context/publishers.mts'
+import { createInitialDnaState } from './context/states.mts'
+import {
+  toCapabilitiesContextState,
+  toMissionContextState,
+  toRuntimeContextState,
+  toSchedulerContextState,
+  toWorkspaceContextState,
+} from './context/mappers.mts'
 
 export type KernelStateListener = () => void
 
@@ -40,6 +63,20 @@ export class Kernel {
   readonly registry: KernelRegistry
   private readonly mission: KernelMissionRuntime
   private readonly runtime: Runtime | null
+  private readonly context: KernelContext
+  private readonly runtimePublisher: RuntimePublisher
+  private readonly missionPublisher: MissionPublisher
+  private readonly schedulerPublisher: SchedulerPublisher
+  private readonly capabilityPublisher: CapabilityPublisher
+  private readonly providerPublisher: ProviderPublisher
+  private readonly memoryPublisher: MemoryPublisher
+  private readonly notificationPublisher: NotificationPublisher
+  private readonly workspacePublisher: WorkspacePublisher
+  private readonly healthPublisher: HealthPublisher
+  private readonly dnaPublisher: KernelContextPublisher<'dna'>
+  private readonly stopContextPublishing: () => void
+  private readonly stopMissionContext: () => void
+  private stopRuntimeContext: (() => void) | null = null
   private state: KernelState
   private startedAt: string | null = null
   private readonly listeners = new Set<KernelStateListener>()
@@ -68,15 +105,41 @@ export class Kernel {
       modules: this.registry.list(),
     }
     this.stopObserving = this.events.onAny((event) => this.apply(event))
+    this.context = new KernelContext(now)
+    this.runtimePublisher = new RuntimePublisher(this.context)
+    this.missionPublisher = new MissionPublisher(this.context)
+    this.schedulerPublisher = new SchedulerPublisher(this.context)
+    this.capabilityPublisher = new CapabilityPublisher(this.context)
+    this.providerPublisher = new ProviderPublisher(this.context)
+    this.memoryPublisher = new MemoryPublisher(this.context)
+    this.notificationPublisher = new NotificationPublisher(this.context)
+    this.workspacePublisher = new WorkspacePublisher(this.context)
+    this.healthPublisher = new HealthPublisher(this.context)
+    this.dnaPublisher = new KernelContextPublisher<'dna'>(this.context, 'dna', createInitialDnaState())
+    this.stopContextPublishing = this.events.onAny((event) => this.publishFromEvent(event))
+    this.stopMissionContext = this.mission.store.subscribe(() => this.publishMission())
+    const runtime = this.runtime
+    if (runtime) {
+      this.stopRuntimeContext = runtime.events.onAny(() => {
+        this.runtimePublisher.publish(toRuntimeContextState(runtime))
+      })
+    }
+    this.publishInitialContext()
   }
 
   getSnapshot = (): KernelState => this.state
 
-  getContext = (): KernelContext => ({
+  getContext = (): LegacyKernelContext => ({
     state: this.state,
     startedAt: this.startedAt,
     environment: 'simulated',
   })
+
+  getKernelContext = (): KernelContext => this.context
+
+  getContextSnapshot = (): KernelSnapshot => this.context.getSnapshot()
+
+  getContextReader = (): KernelContextReader => this.context.createReader()
 
   getMissionStore = () => this.mission.store
 
@@ -143,7 +206,70 @@ export class Kernel {
     this.mission.dispose()
     this.runtime?.dispose()
     this.stopObserving()
+    this.stopContextPublishing()
+    this.stopMissionContext()
+    this.stopRuntimeContext?.()
+    this.context.dispose()
     this.listeners.clear()
+  }
+
+  private publishInitialContext(): void {
+    this.publishMission()
+    this.schedulerPublisher.publish(
+      toSchedulerContextState(this.scheduler, this.state.scheduler.status),
+    )
+    this.capabilityPublisher.publish(
+      toCapabilitiesContextState(this.capabilities, this.state.capabilities.lastDiscoveryAt),
+    )
+    this.healthPublisher.publish({ status: 'unknown', message: 'Kernel no iniciado.' })
+    const runtime = this.runtime
+    if (runtime) this.runtimePublisher.publish(toRuntimeContextState(runtime))
+    this.publishWorkspace()
+  }
+
+  private publishFromEvent(event: KernelEvent): void {
+    switch (event.type) {
+      case 'SchedulerStarted':
+      case 'SchedulerStopped':
+      case 'SchedulerTaskQueued':
+      case 'SchedulerTaskChanged':
+        this.schedulerPublisher.publish(
+          toSchedulerContextState(this.scheduler, this.state.scheduler.status),
+        )
+        break
+      case 'CapabilityRegistered':
+      case 'CapabilityChanged':
+      case 'CapabilityDiscoveryRequested':
+        this.capabilityPublisher.publish(
+          toCapabilitiesContextState(this.capabilities, this.state.capabilities.lastDiscoveryAt),
+        )
+        break
+      case 'DNALoaded':
+        this.dnaPublisher.update({ dna: event.payload.dna })
+        this.publishWorkspace()
+        break
+      default: {
+        const healthStatus = eventToHealth[event.type]
+        if (healthStatus && 'message' in event.payload) {
+          this.healthPublisher.update({ status: healthStatus, message: event.payload.message })
+        }
+      }
+    }
+  }
+
+  private publishMission(): void {
+    const mission = this.mission.store.getSnapshot()
+    this.missionPublisher.publish(toMissionContextState(mission))
+    this.providerPublisher.publish(mission.providers)
+    this.memoryPublisher.publish(mission.memory)
+    this.notificationPublisher.publish(mission.notifications)
+  }
+
+  private publishWorkspace(): void {
+    const dna = this.context.read('dna')?.dna ?? null
+    this.workspacePublisher.publish(
+      toWorkspaceContextState(dna, dna ? this.now() : null),
+    )
   }
 
   private apply(event: KernelEvent): void {
