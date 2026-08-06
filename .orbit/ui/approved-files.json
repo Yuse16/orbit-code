@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "9329c9669f7d2278c9afb9283e9fcc652116dbe6",
+  "policy": "Visual changes require separate explicit approval.",
+  "approved": [
+    { "path": "app/globals.css", "sha256": "d7400556b98cf53663feecb76f012831514777b90efd59651e7d633b9e4fc8e8" },
+    { "path": "app/page.tsx", "sha256": "2df6b8d9fc6322cd7dc757ddd8b9e3e89be3ced601c0c0b37339553aaba06602" },
+    { "path": "components/orbit/desktop-shell.tsx", "sha256": "fb641bb485c17f8617dafba23e5e285991fc7eea25c6c80e99c469189c9e05bc" },
+    { "path": "components/orbit/desktop-title-bar.tsx", "sha256": "73cb34358c43c0ba1fff450d786a3366d100e8d93030f6f40b5a499139e907ec" },
+    { "path": "components/orbit/project-explorer.tsx", "sha256": "dfbfc5a554d3009c5d4de540562066df3c9228145dc4e162c070165208f6858b" },
+    { "path": "components/orbit/chat-workspace.tsx", "sha256": "c7e96a783cac5c54c277796bfff501968e967017f13ce28a8757b575048af541" },
+    { "path": "components/orbit/workbench.tsx", "sha256": "d345d8df4bf315d3e50d62b4731df8110eeef8b0d226724b67c08ed43066e273" },
+    { "path": "components/orbit/activity-dock.tsx", "sha256": "9adbbf29e797eac17d3eea1436f0db59ef7d4a7dbe43a2607ed177f5125e05c3" },
+    { "path": "components/orbit/orbit-store.tsx", "sha256": "00f139825100e0db71dedbfe1ca6187605b029726b5f13f3a44fdcfffb131f48" },
+    { "path": "components/orbit/primitives.tsx", "sha256": "c152ff9ba0b0042b16fb96cde9749b85b99a1015d4d189cc2a2c28bb15d19d9e" },
+    { "path": "lib/orbit/mock-data.ts", "sha256": "d4a2e7a76b56b3d65dba7b4efd9f10a7ad1a3a6c0e7376747aa02f7611922c1c" },
+    { "path": "lib/orbit/types.ts", "sha256": "008d08a76e66b6a09a7fb84979cb7d0f1fc678d369a5fbb2e836b85f92e996cd" }
+  ],
+  "approvedGlobs": [
+    "components/orbit/*.tsx",
+    "components/ui/*.tsx",
+    "public/*"
+  ]
+}

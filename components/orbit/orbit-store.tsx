@@ -1,16 +1,5 @@
 'use client'
 
-/**
- * Estado global simulado de Orbit Code.
- *
- * INTEGRACIÓN FUTURA (Tauri):
- * Este store concentra el estado de la UI. Cada acción marcada con `// [tauri]`
- * es un punto de conexión donde, más adelante, se invocará un comando real
- * (sistema de archivos, Git, procesos, motores de IA) en lugar de mutar
- * estado local. Los componentes no deberían cambiar al reemplazar la
- * implementación de estas funciones.
- */
-
 import {
   createContext,
   useCallback,
@@ -19,6 +8,23 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import {
+  getMissionHeaderSummary,
+  type ProviderId,
+} from '@/lib/mission-control/index.mts'
+import { createDirector } from '@/lib/director/index.mts'
+import type { DecisionPolicyId, ExecutionPlan } from '@/lib/director/index.mts'
+import { createMockKernel } from '@/lib/kernel/index.mts'
+import {
+  ProviderManager,
+  type BudgetEstimate,
+  type BudgetInput,
+  type ProviderHealthSummary,
+  type ProviderId as CatalogProviderId,
+  type ProviderPolicy,
+  type ProviderPolicyId,
+  type ProviderSnapshot,
+} from '@/lib/providers/index.mts'
 import {
   ENGINE_OPTIONS,
   FILE_TREE,
@@ -32,18 +38,46 @@ import type {
   Viewport,
   WorkbenchTab,
 } from '@/lib/orbit/types'
+import {
+  MissionControlProvider,
+  useMissionControl,
+  useMissionState,
+} from './mission-control-provider'
 
 export type DialogKind = 'install' | 'cost' | 'commit' | 'connection' | null
+
+const PROVIDER_BY_ENGINE: Record<string, ProviderId | null> = {
+  Automático: null,
+  ChatGPT: 'chatgpt',
+  Codex: 'codex',
+  OpenCode: 'opencode',
+  'OpenRouter Free': 'openrouter',
+  Claude: 'claude',
+  Gemini: 'gemini',
+  v0: 'v0',
+  Builder: 'builder',
+  Figma: 'figma',
+  'Modelo local': 'local-model',
+}
+
+function toConnectionState(status: 'disconnected' | 'connecting' | 'connected' | 'error'): ConnectionState {
+  if (status === 'connected') return 'conectado'
+  if (status === 'connecting') return 'limitado'
+  return 'desconectado'
+}
 
 function findFileContent(id: string): { path: string; content: string } | null {
   let result: { path: string; content: string } | null = null
   const walk = (nodes: typeof FILE_TREE) => {
-    for (const n of nodes) {
-      if (n.id === id && n.type === 'file') {
-        result = { path: n.id, content: n.content ?? `// ${n.name}\n// Sin contenido simulado disponible.` }
+    for (const node of nodes) {
+      if (node.id === id && node.type === 'file') {
+        result = {
+          path: node.id,
+          content: node.content ?? `// ${node.name}\n// Sin contenido simulado disponible.`,
+        }
         return
       }
-      if (n.children) walk(n.children)
+      if (node.children) walk(node.children)
     }
   }
   walk(FILE_TREE)
@@ -51,17 +85,19 @@ function findFileContent(id: string): { path: string; content: string } | null {
 }
 
 interface OrbitState {
-  // Proyecto
   projectId: string
   setProject: (id: string) => void
   projectName: string
   projectPath: string
+  framework: string
+  worktree: string
+  platformLabel: string
+  activeProviderLabel: string
+  generalStatus: { label: string; tone: 'success' | 'warning' | 'danger' | 'primary' }
 
-  // Etapa
   stage: ProjectStage
-  setStage: (s: ProjectStage) => void
+  setStage: (stage: ProjectStage) => void
 
-  // Explorador
   expanded: Record<string, boolean>
   toggleFolder: (id: string) => void
   selectedFile: string | null
@@ -69,46 +105,53 @@ interface OrbitState {
   openFilePath: string
   openFileContent: string
 
-  // Workbench
   tab: WorkbenchTab
-  setTab: (t: WorkbenchTab) => void
+  setTab: (tab: WorkbenchTab) => void
   viewport: Viewport
-  setViewport: (v: Viewport) => void
+  setViewport: (viewport: Viewport) => void
 
-  // Git
   branch: string
-  setBranch: (b: string) => void
+  setBranch: (branch: string) => void
 
-  // Motores
   engine: string
-  setEngine: (e: string) => void
+  setEngine: (engine: string) => void
   connection: ConnectionState
   cycleConnection: () => void
+  providerStates: Record<string, ConnectionState>
 
-  // Chat
   messages: ChatMessage[]
   sendMessage: (text: string) => void
   quickAction: (kind: 'revisar' | 'interfaz' | 'error' | 'pruebas') => void
   autoMode: boolean
-  setAutoMode: (v: boolean) => void
+  setAutoMode: (value: boolean) => void
 
-  // Panel inferior
+  directorPlan: ExecutionPlan | null
+  runDirector: (objective: string, policy: DecisionPolicyId) => void
+
+  providers: ReadonlyArray<ProviderSnapshot>
+  providerHealth: ProviderHealthSummary
+  providerPolicy: ProviderPolicy
+  connectProvider: (id: CatalogProviderId) => void
+  disconnectProvider: (id: CatalogProviderId) => void
+  loginProvider: (id: CatalogProviderId) => void
+  logoutProvider: (id: CatalogProviderId) => void
+  setProviderPolicy: (id: ProviderPolicyId) => void
+  estimateBudget: (input: BudgetInput) => BudgetEstimate
+
   dockOpen: boolean
-  setDockOpen: (v: boolean) => void
+  setDockOpen: (value: boolean) => void
   dockExpanded: boolean
-  setDockExpanded: (v: boolean) => void
+  setDockExpanded: (value: boolean) => void
 
-  // Diálogos
   dialog: DialogKind
-  setDialog: (d: DialogKind) => void
+  setDialog: (dialog: DialogKind) => void
 }
 
 const OrbitContext = createContext<OrbitState | null>(null)
 
 let idCounter = 100
 const nextId = () => `m${idCounter++}`
-const now = () =>
-  new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+const now = () => new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
 
 const QUICK_REPLIES: Record<string, ChatMessage> = {
   revisar: {
@@ -144,56 +187,85 @@ const QUICK_USER: Record<string, string> = {
   pruebas: 'Ejecuta las pruebas.',
 }
 
-export function OrbitProvider({ children }: { children: ReactNode }) {
-  const [projectId, setProjectId] = useState(PROJECTS[0].id)
-  const [stage, setStage] = useState<ProjectStage>('implementacion')
+function OrbitStateProvider({ children }: { children: ReactNode }) {
+  const mission = useMissionControl()
+  const missionState = useMissionState()
+  const [kernel] = useState(() => createMockKernel())
+  const [providerManager] = useState(() => new ProviderManager())
+  const [director] = useState(() => createDirector({ providers: providerManager.readModel() }))
+  const [providerState, setProviderState] = useState(() => ({
+    providers: providerManager.listProviders(),
+    health: providerManager.healthSummary(),
+  }))
+  const [directorPlan, setDirectorPlan] = useState<ExecutionPlan | null>(null)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     app: true,
     components: true,
     lib: true,
     supabase: true,
   })
-  const [selectedFile, setSelectedFile] = useState<string | null>(
-    'components/TaskCard.tsx',
-  )
+  const [selectedFile, setSelectedFile] = useState<string | null>('components/TaskCard.tsx')
   const [tab, setTab] = useState<WorkbenchTab>('preview')
   const [viewport, setViewport] = useState<Viewport>('desktop')
-  const [branch, setBranch] = useState('main')
-  const [engine, setEngine] = useState(ENGINE_OPTIONS[1]) // Codex
-  const [connection, setConnection] = useState<ConnectionState>('conectado')
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES)
   const [autoMode, setAutoMode] = useState(true)
   const [dockOpen, setDockOpen] = useState(true)
   const [dockExpanded, setDockExpanded] = useState(false)
   const [dialog, setDialog] = useState<DialogKind>(null)
 
-  const project = PROJECTS.find((p) => p.id === projectId)!
+  const summary = getMissionHeaderSummary(missionState)
+  const activeProvider = missionState.providers.providers.find(
+    (provider) => provider.id === missionState.providers.primaryProviderId,
+  )
+  const providerStates = Object.fromEntries(
+    missionState.providers.providers.map((provider) => [
+      provider.id,
+      toConnectionState(provider.status),
+    ]),
+  ) as Record<string, ConnectionState>
+
+  const setProject = useCallback((id: string) => {
+    const project = PROJECTS.find((candidate) => candidate.id === id)
+    if (!project) return
+    mission.actions.openProject({ ...project, framework: 'Next.js' })
+  }, [mission])
+
+  const setStage = useCallback((stage: ProjectStage) => {
+    mission.actions.setStage(stage)
+  }, [mission])
 
   const toggleFolder = useCallback((id: string) => {
-    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }))
+    setExpanded((previous) => ({ ...previous, [id]: !previous[id] }))
   }, [])
 
   const selectFile = useCallback((id: string) => {
-    // [tauri] leer archivo del disco real
     setSelectedFile(id)
     setTab('code')
   }, [])
 
+  const setBranch = useCallback((branch: string) => {
+    mission.actions.updateGitStatus({ branch })
+  }, [mission])
+
+  const setEngine = useCallback((engine: string) => {
+    const providerId = PROVIDER_BY_ENGINE[engine] ?? null
+    mission.actions.activateProvider(providerId)
+  }, [mission])
+
   const cycleConnection = useCallback(() => {
-    setConnection((c) =>
-      c === 'conectado' ? 'limitado' : c === 'limitado' ? 'desconectado' : 'conectado',
-    )
-  }, [])
+    const providerId = missionState.providers.primaryProviderId ?? 'codex'
+    const provider = missionState.providers.providers.find((item) => item.id === providerId)
+    mission.actions.activateProvider(providerId)
+    if (provider?.status === 'connected') {
+      mission.actions.disconnectProvider(providerId, 'Desconectado (simulado)')
+      return
+    }
+    mission.actions.connectProvider(providerId, 'Conectado (simulado)')
+  }, [mission, missionState.providers])
 
   const sendMessage = useCallback((text: string) => {
     if (!text.trim()) return
-    // [tauri] enviar prompt al motor de IA seleccionado
-    const userMsg: ChatMessage = {
-      id: nextId(),
-      author: 'user',
-      time: now(),
-      text: text.trim(),
-    }
+    const userMessage: ChatMessage = { id: nextId(), author: 'user', time: now(), text: text.trim() }
     const reply: ChatMessage = {
       id: nextId(),
       author: 'orbit',
@@ -201,95 +273,179 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
       text: 'Recibido. Procesaré la solicitud respetando la etapa actual del proyecto y la interfaz aprobada.',
       footnote: 'Analizando contexto…',
     }
-    setMessages((prev) => [...prev, userMsg, reply])
+    setMessages((previous) => [...previous, userMessage, reply])
     setDockOpen(true)
   }, [])
 
-  const quickAction = useCallback(
-    (kind: 'revisar' | 'interfaz' | 'error' | 'pruebas') => {
-      const userMsg: ChatMessage = {
-        id: nextId(),
-        author: 'user',
-        time: now(),
-        text: QUICK_USER[kind],
-      }
-      const reply = { ...QUICK_REPLIES[kind], id: nextId(), time: now() }
-      setMessages((prev) => [...prev, userMsg, reply])
-      setDockOpen(true)
-    },
-    [],
+  const quickAction = useCallback((kind: 'revisar' | 'interfaz' | 'error' | 'pruebas') => {
+    const userMessage: ChatMessage = { id: nextId(), author: 'user', time: now(), text: QUICK_USER[kind] }
+    const reply = { ...QUICK_REPLIES[kind], id: nextId(), time: now() }
+    setMessages((previous) => [...previous, userMessage, reply])
+    setDockOpen(true)
+  }, [])
+
+  const refreshProviders = useCallback(() => {
+    setProviderState({
+      providers: providerManager.listProviders(),
+      health: providerManager.healthSummary(),
+    })
+  }, [providerManager])
+  const providerSnapshots = providerState.providers
+  const providerHealth = providerState.health
+  const providerPolicy = providerManager.policy()
+
+  const connectProvider = useCallback((id: CatalogProviderId) => {
+    providerManager.connect(id)
+    refreshProviders()
+  }, [providerManager, refreshProviders])
+
+  const disconnectProvider = useCallback((id: CatalogProviderId) => {
+    providerManager.disconnect(id)
+    refreshProviders()
+  }, [providerManager, refreshProviders])
+
+  const loginProvider = useCallback((id: CatalogProviderId) => {
+    providerManager.login(id)
+    refreshProviders()
+  }, [providerManager, refreshProviders])
+
+  const logoutProvider = useCallback((id: CatalogProviderId) => {
+    providerManager.logout(id)
+    refreshProviders()
+  }, [providerManager, refreshProviders])
+
+  const setProviderPolicy = useCallback((id: ProviderPolicyId) => {
+    providerManager.setPolicy(id)
+    refreshProviders()
+  }, [providerManager, refreshProviders])
+
+  const estimateBudget = useCallback(
+    (input: BudgetInput) => providerManager.estimateBudget(input),
+    [providerManager],
   )
+
+  const runDirector = useCallback((objective: string, policy: DecisionPolicyId) => {
+    const plan = director.decide({
+      request: { objective, policy },
+      kernel: kernel.getContextReader(),
+      currentStage: missionState.tasks.currentStage,
+    })
+    setDirectorPlan(plan)
+    setTab('director')
+    const userMessage: ChatMessage = { id: nextId(), author: 'user', time: now(), text: objective }
+    const reply: ChatMessage = {
+      id: nextId(),
+      author: 'orbit',
+      time: now(),
+      text: `Plan generado con política "${plan.policy}".`,
+      footnote: `Costo estimado $${plan.estimatedCost.toFixed(2)} · ${plan.parallelTasks.length + plan.sequentialTasks.length} tareas.`,
+    }
+    setMessages((previous) => [...previous, userMessage, reply])
+    setDockOpen(true)
+  }, [director, kernel, missionState.tasks.currentStage])
 
   const openFile = selectedFile ? findFileContent(selectedFile) : null
-
-  const value = useMemo<OrbitState>(
-    () => ({
-      projectId,
-      setProject: setProjectId,
-      projectName: project.name,
-      projectPath: project.path,
-      stage,
-      setStage,
-      expanded,
-      toggleFolder,
-      selectedFile,
-      selectFile,
-      openFilePath: openFile?.path ?? 'components/TaskCard.tsx',
-      openFileContent:
-        openFile?.content ??
-        '// Selecciona un archivo del explorador para ver su contenido.',
-      tab,
-      setTab,
-      viewport,
-      setViewport,
-      branch,
-      setBranch,
-      engine,
-      setEngine,
-      connection,
-      cycleConnection,
-      messages,
-      sendMessage,
-      quickAction,
-      autoMode,
-      setAutoMode,
-      dockOpen,
-      setDockOpen,
-      dockExpanded,
-      setDockExpanded,
-      dialog,
-      setDialog,
-    }),
-    [
-      projectId,
-      project,
-      stage,
-      expanded,
-      toggleFolder,
-      selectedFile,
-      selectFile,
-      openFile,
-      tab,
-      viewport,
-      branch,
-      engine,
-      connection,
-      cycleConnection,
-      messages,
-      sendMessage,
-      quickAction,
-      autoMode,
-      dockOpen,
-      dockExpanded,
-      dialog,
-    ],
-  )
+  const value = useMemo<OrbitState>(() => ({
+    projectId: missionState.project.id,
+    setProject,
+    projectName: summary.project,
+    projectPath: summary.projectPath,
+    framework: summary.framework,
+    worktree: missionState.git.worktree,
+    platformLabel: summary.operatingSystem,
+    activeProviderLabel: summary.provider,
+    generalStatus: summary.status,
+    stage: missionState.tasks.currentStage,
+    setStage,
+    expanded,
+    toggleFolder,
+    selectedFile,
+    selectFile,
+    openFilePath: openFile?.path ?? 'components/TaskCard.tsx',
+    openFileContent: openFile?.content ?? '// Selecciona un archivo del explorador para ver su contenido.',
+    tab,
+    setTab,
+    viewport,
+    setViewport,
+    branch: missionState.git.branch,
+    setBranch,
+    engine: activeProvider?.label ?? ENGINE_OPTIONS[0],
+    setEngine,
+    connection: toConnectionState(activeProvider?.status ?? 'disconnected'),
+    cycleConnection,
+    providerStates,
+    messages,
+    sendMessage,
+    quickAction,
+    autoMode,
+    setAutoMode,
+    directorPlan,
+    runDirector,
+    providers: providerSnapshots,
+    providerHealth,
+    providerPolicy,
+    connectProvider,
+    disconnectProvider,
+    loginProvider,
+    logoutProvider,
+    setProviderPolicy,
+    estimateBudget,
+    dockOpen,
+    setDockOpen,
+    dockExpanded,
+    setDockExpanded,
+    dialog,
+    setDialog,
+  }), [
+    activeProvider,
+    autoMode,
+    connectProvider,
+    cycleConnection,
+    dialog,
+    directorPlan,
+    disconnectProvider,
+    dockExpanded,
+    dockOpen,
+    estimateBudget,
+    expanded,
+    loginProvider,
+    logoutProvider,
+    messages,
+    missionState,
+    openFile,
+    providerHealth,
+    providerPolicy,
+    providerSnapshots,
+    providerStates,
+    quickAction,
+    runDirector,
+    selectFile,
+    selectedFile,
+    sendMessage,
+    setBranch,
+    setEngine,
+    setProject,
+    setProviderPolicy,
+    setStage,
+    summary,
+    tab,
+    toggleFolder,
+    viewport,
+  ])
 
   return <OrbitContext.Provider value={value}>{children}</OrbitContext.Provider>
 }
 
+export function OrbitProvider({ children }: { children: ReactNode }) {
+  return (
+    <MissionControlProvider>
+      <OrbitStateProvider>{children}</OrbitStateProvider>
+    </MissionControlProvider>
+  )
+}
+
 export function useOrbit() {
-  const ctx = useContext(OrbitContext)
-  if (!ctx) throw new Error('useOrbit debe usarse dentro de OrbitProvider')
-  return ctx
+  const context = useContext(OrbitContext)
+  if (!context) throw new Error('useOrbit debe usarse dentro de OrbitProvider')
+  return context
 }

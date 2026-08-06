@@ -38,7 +38,7 @@ const DOT: Record<ConnectionState, string> = {
 }
 
 export function ModelStatusPanel() {
-  const { engine, setEngine, connection, cycleConnection } = useOrbit()
+  const { engine, setEngine, connection, cycleConnection, providerStates } = useOrbit()
 
   const globalLabel =
     connection === 'conectado'
@@ -75,14 +75,15 @@ export function ModelStatusPanel() {
         {ENGINES.map((e) => {
           const meta = ENGINE_ICON[e.id]
           const Icon = meta.icon
+          const state = providerStates[e.id] ?? 'desconectado'
           return (
             <Tooltip key={e.id} label={e.description} side="top">
               <div className="flex w-full items-center gap-2 rounded-lg border border-border bg-panel px-2.5 py-2">
                 <Icon className={cn('size-4 shrink-0', meta.color)} />
                 <span className="truncate text-[13px] font-medium">{e.name}</span>
                 <span
-                  className={cn('ml-auto size-2 rounded-full', DOT[e.state])}
-                  aria-label={e.state}
+                  className={cn('ml-auto size-2 rounded-full', DOT[state])}
+                  aria-label={state}
                 />
               </div>
             </Tooltip>

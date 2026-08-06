@@ -3,6 +3,9 @@
 /**
  * Ensamblaje de la ventana de escritorio Orbit Code.
  *
+ * La barra de título es nativa de macOS (decoraciones del sistema); el
+ * contenido WebView comienza directamente en la zona de trabajo.
+ *
  * Distribución (fiel a la imagen de referencia):
  *  ┌───────────────────────── Barra de título ─────────────────────────┐
  *  │ Rail │ Explorador │            Chat            │     Workbench      │
@@ -15,7 +18,6 @@
  */
 
 import { OrbitProvider } from './orbit-store'
-import { DesktopTitleBar } from './desktop-title-bar'
 import { ActivityRail } from './activity-rail'
 import { ProjectExplorer } from './project-explorer'
 import { ChatWorkspace } from './chat-workspace'
@@ -29,8 +31,6 @@ export function DesktopShell() {
       <div className="flex h-screen w-full flex-col overflow-hidden bg-app-gradient p-2.5">
         {/* Ventana de la aplicación */}
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl ring-1 ring-white/[0.03]">
-          <DesktopTitleBar />
-
           <div className="flex min-h-0 flex-1">
             {/* Izquierda: rail + explorador (altura completa) */}
             <ActivityRail />

@@ -66,7 +66,7 @@ export interface Engine {
   description: string
 }
 
-export type WorkbenchTab = 'preview' | 'code' | 'changes' | 'terminal' | 'agents'
+export type WorkbenchTab = 'preview' | 'code' | 'changes' | 'terminal' | 'agents' | 'director' | 'providers'
 
 export type Viewport = 'desktop' | 'tablet' | 'movil'
 

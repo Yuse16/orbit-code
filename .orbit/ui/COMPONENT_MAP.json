@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "9329c9669f7d2278c9afb9283e9fcc652116dbe6",
+  "viewport": { "width": 1440, "height": 900 },
+  "root": {
+    "component": "DesktopShell",
+    "file": "components/orbit/desktop-shell.tsx",
+    "children": [
+      {
+        "component": "DesktopTitleBar",
+        "file": "components/orbit/desktop-title-bar.tsx"
+      },
+      {
+        "region": "main",
+        "children": [
+          {
+            "component": "ActivityRail",
+            "file": "components/orbit/activity-rail.tsx",
+            "width": 48
+          },
+          {
+            "component": "ProjectExplorer",
+            "file": "components/orbit/project-explorer.tsx",
+            "width": 276,
+            "children": ["ProjectSelector", "FileTree", "GitPanel", "RecentProjects"]
+          },
+          {
+            "component": "ChatWorkspace",
+            "file": "components/orbit/chat-workspace.tsx",
+            "width": 540,
+            "children": [
+              "StageSelector",
+              "ConversationView",
+              "QuickActions",
+              "ModelStatusPanel",
+              "MessageBox"
+            ]
+          },
+          {
+            "component": "Workbench",
+            "file": "components/orbit/workbench.tsx",
+            "width": "flex",
+            "children": [
+              "LocalhostPreview",
+              "CodeView",
+              "ChangesView",
+              "TerminalView",
+              "AgentsPanel"
+            ]
+          }
+        ]
+      },
+      {
+        "component": "ActivityDock",
+        "file": "components/orbit/activity-dock.tsx",
+        "openHeight": 256
+      },
+      {
+        "component": "OrbitDialogs",
+        "file": "components/orbit/orbit-dialogs.tsx"
+      }
+    ]
+  }
+}

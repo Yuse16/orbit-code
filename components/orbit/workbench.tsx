@@ -15,6 +15,8 @@ import { CodeView } from './code-view'
 import { ChangesView } from './changes-view'
 import { TerminalView } from './terminal-view'
 import { AgentsPanel } from './agents-panel'
+import { DirectorPanel } from './director-panel'
+import { ProvidersPanel } from './providers-panel'
 
 const TABS: { id: WorkbenchTab; label: string; badge?: number }[] = [
   { id: 'preview', label: 'Vista previa' },
@@ -22,6 +24,8 @@ const TABS: { id: WorkbenchTab; label: string; badge?: number }[] = [
   { id: 'changes', label: 'Cambios', badge: DIFFS.length },
   { id: 'terminal', label: 'Terminal' },
   { id: 'agents', label: 'Agentes' },
+  { id: 'director', label: 'Plan' },
+  { id: 'providers', label: 'Proveedores' },
 ]
 
 export function Workbench() {
@@ -69,6 +73,8 @@ export function Workbench() {
         {tab === 'changes' && <ChangesView />}
         {tab === 'terminal' && <TerminalView />}
         {tab === 'agents' && <AgentsPanel />}
+        {tab === 'director' && <DirectorPanel />}
+        {tab === 'providers' && <ProvidersPanel />}
       </div>
     </section>
   )
