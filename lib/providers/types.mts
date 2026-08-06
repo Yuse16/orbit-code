@@ -137,9 +137,9 @@ export interface ProviderSessionSnapshot {
   providerId: ProviderId
   status: AuthStatus
   authenticated: boolean
-  authenticatedAt: string | null
-  expiresAt: string | null
-  tokenPreview: string | null
+  authenticatedAt: string
+  expiresAt: string
+  tokenPreview: string
 }
 
 /** Resumen de salud agregado de todos los proveedores. */

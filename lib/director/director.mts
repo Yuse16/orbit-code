@@ -1,5 +1,6 @@
 import type { KernelContextReader } from '../kernel/context/reader.mts'
 import type { ProjectStage } from '../mission-control/types.mts'
+import type { ProviderManagerReadModel } from '../providers/types.mts'
 import type { WorkspaceSnapshot } from '../runtime/adapters/workspace/snapshot.mts'
 import { createDecisionContext, type DecisionContext } from './decision-context.mts'
 import { DecisionEngine } from './decision-engine.mts'
@@ -19,24 +20,29 @@ export interface DirectorOptions {
   history?: DecisionHistory
   policy?: DecisionPolicyId
   now?: () => string
+  /** Read model de solo lectura del ProviderManager (composición). */
+  providers?: ProviderManagerReadModel | null
 }
 
 /**
  * El Director es el único responsable de decidir qué hacer. No ejecuta
  * acciones, no llama modelos, no toca Git/terminal/archivos: solo devuelve
- * un ExecutionPlan a partir de lo que puede leer.
+ * un ExecutionPlan a partir de lo que puede leer. Si recibe el read model
+ * de proveedores, lo consulta de forma read-only antes de decidir.
  */
 export class Director {
   readonly engine: DecisionEngine
   readonly history: DecisionHistory
   private readonly defaultPolicy: DecisionPolicyId
   private readonly now: () => string
+  private readonly providers: ProviderManagerReadModel | null
 
   constructor(options: DirectorOptions = {}) {
     this.engine = options.engine ?? new DecisionEngine({ now: options.now })
     this.history = options.history ?? new DecisionHistory()
     this.defaultPolicy = options.policy ?? 'balanced'
     this.now = options.now ?? (() => new Date().toISOString())
+    this.providers = options.providers ?? null
   }
 
   decide(input: DirectorDecideInput): ExecutionPlan {
@@ -50,6 +56,7 @@ export class Director {
       {
         workspaceSnapshot: input.workspaceSnapshot ?? null,
         currentStage: input.currentStage ?? null,
+        providers: this.providers,
       },
       this.now,
     )

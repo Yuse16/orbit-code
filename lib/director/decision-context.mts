@@ -1,4 +1,5 @@
 import type { KernelContextReader } from '../kernel/context/reader.mts'
+import type { ProviderManagerReadModel } from '../providers/types.mts'
 import type {
   CapabilityDescriptor,
   OrbitDNA,
@@ -12,7 +13,8 @@ import type { DirectorRequest } from './types.mts'
 /**
  * Snapshot de lo único que el Director puede leer: KernelContext,
  * WorkspaceSnapshot, DNA, CurrentStage, ProviderState, RuntimeHealth,
- * Capabilities y MemorySummary.
+ * Capabilities, MemorySummary y (si está disponible) el read model de
+ * proveedores, siempre de solo lectura.
  */
 export interface DecisionContext {
   request: DirectorRequest
@@ -30,6 +32,7 @@ export interface DecisionContext {
   workspaceSnapshot: WorkspaceSnapshot | null
   currentStage: ProjectStage | null
   providerState: ProviderState | null
+  providers: ProviderManagerReadModel | null
   runtimeHealth: RuntimeHealthStatus | null
   capabilities: ReadonlyArray<CapabilityDescriptor> | null
   memorySummary: string | null
@@ -40,6 +43,8 @@ export interface DecisionContext {
 export interface DecisionContextOptions {
   workspaceSnapshot?: WorkspaceSnapshot | null
   currentStage?: ProjectStage | null
+  /** Read model de solo lectura del ProviderManager (opcional). */
+  providers?: ProviderManagerReadModel | null
 }
 
 /** Construye el contexto leyendo únicamente a través de KernelContextReader. */
@@ -67,6 +72,7 @@ export function createDecisionContext(
     workspaceSnapshot: options.workspaceSnapshot ?? null,
     currentStage: options.currentStage ?? null,
     providerState: snapshot.providers,
+    providers: options.providers ?? null,
     runtimeHealth: snapshot.runtime.health,
     capabilities,
     memorySummary: snapshot.memory.summaryAvailable ? 'Resumen de memoria disponible.' : null,

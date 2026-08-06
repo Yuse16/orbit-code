@@ -4,6 +4,7 @@ import type { DecisionReason } from './decision-reason.mts'
 import { resolvePolicy, type DecisionPolicy } from './decision-policy.mts'
 import { createExecutionPlan, type ExecutionPlan } from './execution-plan.mts'
 import { applyPolicyToRoute, SimulatedModelRouter, type ModelRouter } from './model-routing.mts'
+import type { BudgetEstimate } from '../providers/types.mts'
 import {
   inferComplexity,
   TaskPlanner,
@@ -15,6 +16,11 @@ import type {
   ModelRecommendation,
   PlannedTask,
 } from './types.mts'
+
+interface ProviderBudgetEstimate {
+  providerName: string
+  estimate: BudgetEstimate
+}
 
 const TASK_BASE_TOKENS: Readonly<Record<DirectorTaskKind, number>> = {
   frontend: 12000,
@@ -143,11 +149,14 @@ export class DecisionEngine {
     })
     if (policy.constraints.preferSpeed) minutes = Math.round(minutes * 0.7)
 
+    const providerEstimate = this.estimateFromProviders(context, tokens)
+
     const parallelTasks = tasks.filter((task) => task.dependencies.length === 0)
     const sequentialTasks = tasks.filter((task) => task.dependencies.length > 0)
-    const approvalRequired = policy.constraints.requireApproval
+    const approvalRequired =
+      policy.constraints.requireApproval || (providerEstimate?.estimate.approvalRequired ?? false)
     const confidence = this.computeConfidence(context)
-    const reasons = this.buildReasons(request.objective, policy, recommendations, context, complexity)
+    const reasons = this.buildReasons(request.objective, policy, recommendations, context, complexity, providerEstimate)
     const reasoningSummary = recommendations.map((recommendation) => recommendation.reason)
 
     return createExecutionPlan({
@@ -169,6 +178,29 @@ export class DecisionEngine {
       reasoningSummary,
       reasons,
     })
+  }
+
+  /**
+   * Consulta read-only al ProviderManager: devuelve una estimación de
+   * presupuesto para el plan usando el proveedor activo. Nunca ejecuta nada.
+   */
+  private estimateFromProviders(
+    context: DecisionContext,
+    tokens: number,
+  ): ProviderBudgetEstimate | null {
+    const providers = context.providers
+    if (!providers) return null
+    const active = providers.getActiveProvider()
+    const modelId = active?.models[0] ?? undefined
+    const estimate = providers.estimateBudget({
+      providerId: active?.id,
+      modelId,
+      inputTokens: tokens,
+    })
+    return {
+      providerName: active?.name ?? 'ninguno activo',
+      estimate,
+    }
   }
 
   private assignModels(
@@ -234,6 +266,7 @@ export class DecisionEngine {
     recommendations: ReadonlyArray<ModelRecommendation>,
     context: DecisionContext,
     complexity: DirectorComplexity,
+    providerEstimate: ProviderBudgetEstimate | null,
   ): ReadonlyArray<DecisionReason> {
     const reasons: DecisionReason[] = [
       createReason('request', 'Solicitud recibida', objective, 0),
@@ -245,13 +278,33 @@ export class DecisionEngine {
       ),
       createReason('policy', 'Política aplicada', `${policy.label}: ${policy.description}`, 2),
     ]
-    recommendations.forEach((recommendation, index) => {
+    if (context.providers) {
+      reasons.push(
+        createReason(
+          'providers',
+          'Proveedores consultados',
+          context.providers.healthSummary().message,
+          reasons.length,
+        ),
+      )
+    }
+    if (providerEstimate) {
+      reasons.push(
+        createReason(
+          'budget',
+          'Presupuesto estimado',
+          `Proveedor activo: ${providerEstimate.providerName}. Créditos estimados: ${providerEstimate.estimate.estimatedCredits}. Restantes: ${providerEstimate.estimate.remainingBudget}.`,
+          reasons.length,
+        ),
+      )
+    }
+    recommendations.forEach((recommendation) => {
       reasons.push(
         createReason(
           'routing',
           `Modelo para ${recommendation.kind}`,
           recommendation.reason,
-          index + 3,
+          reasons.length,
         ),
       )
     })
@@ -272,9 +325,13 @@ export class DecisionEngine {
     if (!policy.constraints.allowExternalModels) {
       return 'Si el modelo local no responde, pausar la tarea y solicitar aprobación del usuario.'
     }
+    const activeProvider = context.providers?.getActiveProvider()
+    const providerSuffix = activeProvider
+      ? ` Proveedor activo: ${activeProvider.name}.`
+      : ''
     const offlineFallback = context.dna
       ? `si ${primary} no está disponible, usar el modelo local y avisar al usuario.`
       : `si ${primary} no está disponible, usar OpenCode.`
-    return `Ejecutar con ${primary}; ${offlineFallback} En caso de error, reintentar una vez y reportar.`
+    return `Ejecutar con ${primary}; ${offlineFallback}${providerSuffix} En caso de error, reintentar una vez y reportar.`
   }
 }

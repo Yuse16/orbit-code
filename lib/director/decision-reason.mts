@@ -1,4 +1,10 @@
-export type DecisionReasonSource = 'request' | 'context' | 'routing' | 'policy'
+export type DecisionReasonSource =
+  | 'request'
+  | 'context'
+  | 'routing'
+  | 'policy'
+  | 'providers'
+  | 'budget'
 
 /** Justificación de una decisión del Director, trazable para DecisionHistory. */
 export interface DecisionReason {
