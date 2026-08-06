@@ -16,6 +16,16 @@ import { createDirector } from '@/lib/director/index.mts'
 import type { DecisionPolicyId, ExecutionPlan } from '@/lib/director/index.mts'
 import { createMockKernel } from '@/lib/kernel/index.mts'
 import {
+  ProviderManager,
+  type BudgetEstimate,
+  type BudgetInput,
+  type ProviderHealthSummary,
+  type ProviderId as CatalogProviderId,
+  type ProviderPolicy,
+  type ProviderPolicyId,
+  type ProviderSnapshot,
+} from '@/lib/providers/index.mts'
+import {
   ENGINE_OPTIONS,
   FILE_TREE,
   INITIAL_MESSAGES,
@@ -118,6 +128,16 @@ interface OrbitState {
   directorPlan: ExecutionPlan | null
   runDirector: (objective: string, policy: DecisionPolicyId) => void
 
+  providers: ReadonlyArray<ProviderSnapshot>
+  providerHealth: ProviderHealthSummary
+  providerPolicy: ProviderPolicy
+  connectProvider: (id: CatalogProviderId) => void
+  disconnectProvider: (id: CatalogProviderId) => void
+  loginProvider: (id: CatalogProviderId) => void
+  logoutProvider: (id: CatalogProviderId) => void
+  setProviderPolicy: (id: ProviderPolicyId) => void
+  estimateBudget: (input: BudgetInput) => BudgetEstimate
+
   dockOpen: boolean
   setDockOpen: (value: boolean) => void
   dockExpanded: boolean
@@ -171,7 +191,12 @@ function OrbitStateProvider({ children }: { children: ReactNode }) {
   const mission = useMissionControl()
   const missionState = useMissionState()
   const [kernel] = useState(() => createMockKernel())
-  const [director] = useState(() => createDirector())
+  const [providerManager] = useState(() => new ProviderManager())
+  const [director] = useState(() => createDirector({ providers: providerManager.readModel() }))
+  const [providerState, setProviderState] = useState(() => ({
+    providers: providerManager.listProviders(),
+    health: providerManager.healthSummary(),
+  }))
   const [directorPlan, setDirectorPlan] = useState<ExecutionPlan | null>(null)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     app: true,
@@ -259,6 +284,46 @@ function OrbitStateProvider({ children }: { children: ReactNode }) {
     setDockOpen(true)
   }, [])
 
+  const refreshProviders = useCallback(() => {
+    setProviderState({
+      providers: providerManager.listProviders(),
+      health: providerManager.healthSummary(),
+    })
+  }, [providerManager])
+  const providerSnapshots = providerState.providers
+  const providerHealth = providerState.health
+  const providerPolicy = providerManager.policy()
+
+  const connectProvider = useCallback((id: CatalogProviderId) => {
+    providerManager.connect(id)
+    refreshProviders()
+  }, [providerManager, refreshProviders])
+
+  const disconnectProvider = useCallback((id: CatalogProviderId) => {
+    providerManager.disconnect(id)
+    refreshProviders()
+  }, [providerManager, refreshProviders])
+
+  const loginProvider = useCallback((id: CatalogProviderId) => {
+    providerManager.login(id)
+    refreshProviders()
+  }, [providerManager, refreshProviders])
+
+  const logoutProvider = useCallback((id: CatalogProviderId) => {
+    providerManager.logout(id)
+    refreshProviders()
+  }, [providerManager, refreshProviders])
+
+  const setProviderPolicy = useCallback((id: ProviderPolicyId) => {
+    providerManager.setPolicy(id)
+    refreshProviders()
+  }, [providerManager, refreshProviders])
+
+  const estimateBudget = useCallback(
+    (input: BudgetInput) => providerManager.estimateBudget(input),
+    [providerManager],
+  )
+
   const runDirector = useCallback((objective: string, policy: DecisionPolicyId) => {
     const plan = director.decide({
       request: { objective, policy },
@@ -316,6 +381,15 @@ function OrbitStateProvider({ children }: { children: ReactNode }) {
     setAutoMode,
     directorPlan,
     runDirector,
+    providers: providerSnapshots,
+    providerHealth,
+    providerPolicy,
+    connectProvider,
+    disconnectProvider,
+    loginProvider,
+    logoutProvider,
+    setProviderPolicy,
+    estimateBudget,
     dockOpen,
     setDockOpen,
     dockExpanded,
@@ -325,15 +399,23 @@ function OrbitStateProvider({ children }: { children: ReactNode }) {
   }), [
     activeProvider,
     autoMode,
+    connectProvider,
     cycleConnection,
     dialog,
     directorPlan,
+    disconnectProvider,
     dockExpanded,
     dockOpen,
+    estimateBudget,
     expanded,
+    loginProvider,
+    logoutProvider,
     messages,
     missionState,
     openFile,
+    providerHealth,
+    providerPolicy,
+    providerSnapshots,
     providerStates,
     quickAction,
     runDirector,
@@ -343,6 +425,7 @@ function OrbitStateProvider({ children }: { children: ReactNode }) {
     setBranch,
     setEngine,
     setProject,
+    setProviderPolicy,
     setStage,
     summary,
     tab,
