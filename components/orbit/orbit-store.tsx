@@ -111,6 +111,8 @@ interface OrbitState {
   selectFile: (id: string) => void
   openFilePath: string
   openFileContent: string
+  searchQuery: string
+  setSearchQuery: (query: string) => void
 
   tab: WorkbenchTab
   setTab: (tab: WorkbenchTab) => void
@@ -215,6 +217,7 @@ function OrbitStateProvider({ children }: { children: ReactNode }) {
     supabase: true,
   })
   const [selectedFile, setSelectedFile] = useState<string | null>('components/TaskCard.tsx')
+  const [searchQuery, setSearchQuery] = useState('')
   const [tab, setTab] = useState<WorkbenchTab>('preview')
   const [viewport, setViewport] = useState<Viewport>('desktop')
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES)
@@ -384,6 +387,8 @@ function OrbitStateProvider({ children }: { children: ReactNode }) {
     selectFile,
     openFilePath: openFile?.path ?? 'components/TaskCard.tsx',
     openFileContent: openFile?.content ?? '// Selecciona un archivo del explorador para ver su contenido.',
+    searchQuery,
+    setSearchQuery,
     tab,
     setTab,
     viewport,
@@ -447,6 +452,7 @@ function OrbitStateProvider({ children }: { children: ReactNode }) {
     runDirector,
     selectFile,
     selectedFile,
+    searchQuery,
     sendMessage,
     setBranch,
     setEngine,
