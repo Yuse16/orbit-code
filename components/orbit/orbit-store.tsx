@@ -38,6 +38,7 @@ import type {
   Viewport,
   WorkbenchTab,
 } from '@/lib/orbit/types'
+import type { ProjectDescriptor } from '@/lib/mission-control/types.mts'
 import type { WorkspaceIndexSnapshot } from '@/lib/runtime/adapters/workspace/indexer.mts'
 import {
   MissionControlProvider,
@@ -92,6 +93,8 @@ interface OrbitState {
   projectName: string
   projectPath: string
   workspaceIndex: WorkspaceIndexSnapshot | null
+  recentProjects: ReadonlyArray<ProjectDescriptor>
+  openRecentProject: (project: ProjectDescriptor) => void
   openFolder: () => Promise<void>
   framework: string
   worktree: string
@@ -237,6 +240,11 @@ function OrbitStateProvider({ children }: { children: ReactNode }) {
 
   const openFolder = useCallback(() => mission.actions.openFolder(), [mission])
 
+  const openRecentProject = useCallback(
+    (project: ProjectDescriptor) => mission.actions.openProject(project),
+    [mission],
+  )
+
   const setStage = useCallback((stage: ProjectStage) => {
     mission.actions.setStage(stage)
   }, [mission])
@@ -358,6 +366,8 @@ function OrbitStateProvider({ children }: { children: ReactNode }) {
     projectName: summary.project,
     projectPath: summary.projectPath,
     workspaceIndex: kernelContext.workspace.index,
+    recentProjects: missionState.recentProjects,
+    openRecentProject,
     openFolder,
     framework: summary.framework,
     worktree: missionState.git.worktree,
@@ -421,6 +431,7 @@ function OrbitStateProvider({ children }: { children: ReactNode }) {
     logoutProvider,
     messages,
     missionState,
+    openRecentProject,
     kernelContext,
     openFile,
     openFolder,
