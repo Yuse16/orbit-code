@@ -1,4 +1,4 @@
-import type { GitChange, GitWorktreeStatus, HostPlatform } from './types.mts'
+import type { GitChange, GitWorktreeStatus, HostPlatform, PackageManifest } from './types.mts'
 import { invoke } from '@tauri-apps/api/core'
 import type { WorkspaceIndexSnapshot } from '../runtime/adapters/workspace/indexer.mts'
 
@@ -13,6 +13,7 @@ export interface WorkspaceOpenResult {
   projectName: string
   index: WorkspaceIndexSnapshot
   stack: WorkspaceStack
+  packageJson: PackageManifest | null
 }
 
 export interface WorkspaceStack {

@@ -37,6 +37,7 @@ struct WorkspaceOpenResult {
     project_name: String,
     index: WorkspaceIndexSnapshot,
     stack: WorkspaceStack,
+    package_json: Option<PackageManifest>,
 }
 
 #[derive(Debug, Serialize)]
@@ -47,6 +48,16 @@ struct WorkspaceStack {
     package_manager: String,
     build_system: String,
     confidence: f32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PackageManifest {
+    name: Option<String>,
+    version: Option<String>,
+    scripts: Vec<String>,
+    dependency_count: usize,
+    dev_dependency_count: usize,
 }
 
 #[derive(Debug, Serialize)]
@@ -168,6 +179,46 @@ fn detect_stack(signals: &[String]) -> WorkspaceStack {
     }
 }
 
+fn read_package_manifest(root: &Path) -> Result<Option<PackageManifest>, String> {
+    let path = root.join("package.json");
+    if !path.is_file() {
+        return Ok(None);
+    }
+    let content = fs::read_to_string(&path)
+        .map_err(|error| format!("No se pudo leer package.json: {error}"))?;
+    let value: serde_json::Value = serde_json::from_str(&content)
+        .map_err(|error| format!("package.json no es JSON válido: {error}"))?;
+    let object = value
+        .as_object()
+        .ok_or_else(|| "package.json debe contener un objeto".to_string())?;
+    let scripts = object
+        .get("scripts")
+        .and_then(serde_json::Value::as_object)
+        .map(|scripts| scripts.keys().cloned().collect())
+        .unwrap_or_default();
+    let dependency_count = object
+        .get("dependencies")
+        .and_then(serde_json::Value::as_object)
+        .map_or(0, serde_json::Map::len);
+    let dev_dependency_count = object
+        .get("devDependencies")
+        .and_then(serde_json::Value::as_object)
+        .map_or(0, serde_json::Map::len);
+    Ok(Some(PackageManifest {
+        name: object
+            .get("name")
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_string),
+        version: object
+            .get("version")
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_string),
+        scripts,
+        dependency_count,
+        dev_dependency_count,
+    }))
+}
+
 fn read_nodes(
     directory: &Path,
     relative_parent: &str,
@@ -270,6 +321,7 @@ async fn open_folder(app: tauri::AppHandle) -> Result<Option<WorkspaceOpenResult
             indexed_at,
         },
         stack: detect_stack(&signals),
+        package_json: read_package_manifest(&root)?,
     }))
 }
 

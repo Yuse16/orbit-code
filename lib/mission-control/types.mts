@@ -40,6 +40,15 @@ export interface ProjectDescriptor {
   name: string
   path: string
   framework: string
+  packageJson?: PackageManifest | null
+}
+
+export interface PackageManifest {
+  name: string | null
+  version: string | null
+  scripts: string[]
+  dependencyCount: number
+  devDependencyCount: number
 }
 
 export interface ProjectState extends ProjectDescriptor {
