@@ -1,6 +1,7 @@
 export { EventBus } from './event-bus.mts'
 export type { MissionControl, MissionControlActions } from './contracts.mts'
-export { MockDesktopClient } from './desktop-client.mts'
+export { MockDesktopClient, TauriDesktopClient } from './desktop-client.mts'
+export type { DesktopClient, DesktopSnapshot, WorkspaceOpenResult } from './desktop-client.mts'
 export type { MissionEvent, MissionEventMap, MissionEventType } from './events.mts'
 export { createDefaultMissionControl, createMissionControl } from './mission-control.mts'
 export { createMockServices } from './mock-services.mts'

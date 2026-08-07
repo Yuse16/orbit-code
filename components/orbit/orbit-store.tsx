@@ -38,10 +38,12 @@ import type {
   Viewport,
   WorkbenchTab,
 } from '@/lib/orbit/types'
+import type { WorkspaceIndexSnapshot } from '@/lib/runtime/adapters/workspace/indexer.mts'
 import {
   MissionControlProvider,
   useMissionControl,
   useMissionState,
+  useKernelContext,
 } from './mission-control-provider'
 
 export type DialogKind = 'install' | 'cost' | 'commit' | 'connection' | null
@@ -89,6 +91,8 @@ interface OrbitState {
   setProject: (id: string) => void
   projectName: string
   projectPath: string
+  workspaceIndex: WorkspaceIndexSnapshot | null
+  openFolder: () => Promise<void>
   framework: string
   worktree: string
   platformLabel: string
@@ -190,6 +194,7 @@ const QUICK_USER: Record<string, string> = {
 function OrbitStateProvider({ children }: { children: ReactNode }) {
   const mission = useMissionControl()
   const missionState = useMissionState()
+  const kernelContext = useKernelContext()
   const [kernel] = useState(() => createMockKernel())
   const [providerManager] = useState(() => new ProviderManager())
   const [director] = useState(() => createDirector({ providers: providerManager.readModel() }))
@@ -229,6 +234,8 @@ function OrbitStateProvider({ children }: { children: ReactNode }) {
     if (!project) return
     mission.actions.openProject({ ...project, framework: 'Next.js' })
   }, [mission])
+
+  const openFolder = useCallback(() => mission.actions.openFolder(), [mission])
 
   const setStage = useCallback((stage: ProjectStage) => {
     mission.actions.setStage(stage)
@@ -350,6 +357,8 @@ function OrbitStateProvider({ children }: { children: ReactNode }) {
     setProject,
     projectName: summary.project,
     projectPath: summary.projectPath,
+    workspaceIndex: kernelContext.workspace.index,
+    openFolder,
     framework: summary.framework,
     worktree: missionState.git.worktree,
     platformLabel: summary.operatingSystem,
@@ -412,7 +421,9 @@ function OrbitStateProvider({ children }: { children: ReactNode }) {
     logoutProvider,
     messages,
     missionState,
+    kernelContext,
     openFile,
+    openFolder,
     providerHealth,
     providerPolicy,
     providerSnapshots,

@@ -3,5 +3,5 @@
   "identifier": "main",
   "description": "Minimal window capability for the Orbit Code shell",
   "windows": ["main"],
-  "permissions": ["core:window:default"]
+  "permissions": ["core:window:default", "dialog:default"]
 }

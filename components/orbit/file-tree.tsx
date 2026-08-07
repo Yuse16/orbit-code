@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { FILE_TREE } from '@/lib/orbit/mock-data'
 import type { FileNode, GitStatus } from '@/lib/orbit/types'
+import type { WorkspaceIndexNode } from '@/lib/runtime/adapters/workspace/indexer.mts'
 import { useOrbit } from './orbit-store'
 import { cn } from '@/lib/utils'
 
@@ -57,6 +58,16 @@ function GitBadge({ status }: { status: GitStatus }) {
       {status}
     </span>
   )
+}
+
+function toFileNode(node: WorkspaceIndexNode): FileNode {
+  return {
+    id: node.id,
+    name: node.name,
+    type: node.type,
+    ext: node.ext ?? undefined,
+    children: node.children?.map(toFileNode),
+  }
 }
 
 function TreeNode({ node, depth }: { node: FileNode; depth: number }) {
@@ -120,13 +131,16 @@ function TreeNode({ node, depth }: { node: FileNode; depth: number }) {
 }
 
 export function FileTree() {
+  const { workspaceIndex } = useOrbit()
+  const nodes = workspaceIndex ? workspaceIndex.nodes.map(toFileNode) : FILE_TREE
+
   return (
     <div>
       <p className="px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
         Explorador
       </p>
       <ul className="space-y-0.5">
-        {FILE_TREE.map((node) => (
+        {nodes.map((node) => (
           <TreeNode key={node.id} node={node} depth={0} />
         ))}
       </ul>

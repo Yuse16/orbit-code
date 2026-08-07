@@ -1,5 +1,5 @@
 import type { DesktopClient } from '../mission-control/desktop-client.mts'
-import { MockDesktopClient } from '../mission-control/desktop-client.mts'
+import { createDefaultDesktopClient } from '../mission-control/desktop-client.mts'
 import { EventBus } from '../mission-control/event-bus.mts'
 import { createMockServices } from '../mission-control/mock-services.mts'
 import { installMissionObservers } from '../mission-control/observers.mts'
@@ -23,7 +23,7 @@ export interface KernelMissionRuntimeOptions {
 export function createKernelMissionRuntime(options: KernelMissionRuntimeOptions): KernelMissionRuntime {
   const events = new EventBus()
   const store = new MissionStore(events)
-  const desktopClient = options.desktopClient ?? new MockDesktopClient()
+  const desktopClient = options.desktopClient ?? createDefaultDesktopClient()
   const services = createMockServices(events, desktopClient, options.now)
   const stopObservers = installMissionObservers(events, options.now)
 
