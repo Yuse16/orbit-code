@@ -11,6 +11,7 @@ export type HostPlatform = 'macos' | 'windows' | 'linux'
 export type LocalhostStatus = 'stopped' | 'starting' | 'active' | 'error'
 export type BuildStatus = 'idle' | 'running' | 'succeeded' | 'failed'
 export type GitWorktreeStatus = 'clean' | 'changes-pending' | 'conflicted'
+export type GitChangeStatus = 'M' | 'A' | 'D' | '?'
 export type ProviderConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
 export type AgentStatus = 'idle' | 'working' | 'completed' | 'failed'
 export type NotificationLevel = 'info' | 'success' | 'warning' | 'error'
@@ -52,6 +53,12 @@ export interface GitState {
   status: GitWorktreeStatus
   pendingChanges: number
   lastSummary: string
+  changes: GitChange[]
+}
+
+export interface GitChange {
+  status: GitChangeStatus
+  path: string
 }
 
 export interface LocalhostState {
@@ -141,6 +148,7 @@ export interface MissionGuidance {
 
 export interface MissionState {
   project: ProjectState
+  recentProjects: ProjectDescriptor[]
   git: GitState
   localhost: LocalhostState
   providers: ProviderState

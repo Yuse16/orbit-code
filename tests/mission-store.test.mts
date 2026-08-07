@@ -22,10 +22,35 @@ test('MissionStore es la fuente de verdad para contexto de proyecto y etapa', ()
   const state = store.getSnapshot()
   assert.equal(state.project.name, 'Orbit Code')
   assert.equal(state.project.status, 'open')
+  assert.deepEqual(state.recentProjects.map((project) => project.id), ['orbit-code'])
   assert.equal(state.tasks.currentStage, 'implementacion')
   assert.equal(changes, 2)
 
   unsubscribe()
+  store.dispose()
+})
+
+test('MissionStore ordena recientes, elimina duplicados y conserva máximo cinco', () => {
+  const events = new EventBus()
+  const store = new MissionStore(events)
+  const open = (id: string) =>
+    events.emit('ProjectOpened', {
+      project: { id, name: id, path: `/projects/${id}`, framework: 'unknown' },
+      openedAt: '2026-08-05T10:00:00.000Z',
+    })
+
+  open('one')
+  open('two')
+  open('three')
+  open('four')
+  open('five')
+  open('six')
+  open('three')
+
+  assert.deepEqual(
+    store.getSnapshot().recentProjects.map((project) => project.id),
+    ['three', 'six', 'five', 'four', 'two'],
+  )
   store.dispose()
 })
 

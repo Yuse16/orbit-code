@@ -2,11 +2,15 @@
 
 import { FolderGit2 } from 'lucide-react'
 import { RECENT_PROJECTS } from '@/lib/orbit/mock-data'
+import type { ProjectDescriptor } from '@/lib/mission-control/types.mts'
 import { useOrbit } from './orbit-store'
 import { cn } from '@/lib/utils'
 
 export function RecentProjects() {
-  const { projectName } = useOrbit()
+  const { projectName, recentProjects, openRecentProject } = useOrbit()
+  const projects = recentProjects.length
+    ? recentProjects.map((project) => ({ key: project.id, name: project.name, project }))
+    : RECENT_PROJECTS.map((name) => ({ key: name, name, project: null as ProjectDescriptor | null }))
 
   return (
     <section className="border-t border-border px-2 py-3">
@@ -14,11 +18,12 @@ export function RecentProjects() {
         Proyectos recientes
       </p>
       <ul className="mt-1 space-y-0.5">
-        {RECENT_PROJECTS.map((name) => {
+        {projects.map(({ key, name, project }) => {
           const active = name === projectName
           return (
-            <li key={name}>
+            <li key={key}>
               <button
+                onClick={() => project && openRecentProject(project)}
                 className={cn(
                   'flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-[13px] transition-colors',
                   active

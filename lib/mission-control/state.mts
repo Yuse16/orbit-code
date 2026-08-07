@@ -4,6 +4,7 @@ import {
   PROVIDER_CATALOG,
   type AgentSnapshot,
   type MissionState,
+  type ProjectDescriptor,
   type ProviderConnection,
 } from './types.mts'
 
@@ -13,6 +14,8 @@ const initialGuidance = {
   warnings: [],
   pending: ['Seleccionar una acción para continuar.'],
 }
+
+const MAX_RECENT_PROJECTS = 5
 
 export function createInitialMissionState(): MissionState {
   return {
@@ -24,12 +27,14 @@ export function createInitialMissionState(): MissionState {
       status: 'closed',
       openedAt: null,
     },
+    recentProjects: [],
     git: {
       branch: '—',
       worktree: '—',
       status: 'clean',
       pendingChanges: 0,
       lastSummary: 'Sin repositorio abierto',
+      changes: [],
     },
     localhost: { status: 'stopped', url: null, port: null, error: null },
     providers: {
@@ -64,6 +69,16 @@ export function createInitialMissionState(): MissionState {
   }
 }
 
+function updateRecentProjects(
+  projects: ProjectDescriptor[],
+  project: ProjectDescriptor,
+): ProjectDescriptor[] {
+  return [project, ...projects.filter((candidate) => candidate.id !== project.id)].slice(
+    0,
+    MAX_RECENT_PROJECTS,
+  )
+}
+
 function updateProvider(
   providers: ProviderConnection[],
   providerId: ProviderConnection['id'],
@@ -92,6 +107,7 @@ export function reduceMissionState(state: MissionState, event: MissionEvent): Mi
       return {
         ...state,
         project: { ...event.payload.project, status: 'open', openedAt: event.payload.openedAt },
+        recentProjects: updateRecentProjects(state.recentProjects, event.payload.project),
       }
     case 'ProjectClosed':
       return { ...state, project: createInitialMissionState().project }

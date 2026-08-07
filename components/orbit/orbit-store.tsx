@@ -38,6 +38,7 @@ import type {
   Viewport,
   WorkbenchTab,
 } from '@/lib/orbit/types'
+import type { GitChange, ProjectDescriptor } from '@/lib/mission-control/types.mts'
 import type { WorkspaceIndexSnapshot } from '@/lib/runtime/adapters/workspace/indexer.mts'
 import {
   MissionControlProvider,
@@ -92,6 +93,8 @@ interface OrbitState {
   projectName: string
   projectPath: string
   workspaceIndex: WorkspaceIndexSnapshot | null
+  recentProjects: ReadonlyArray<ProjectDescriptor>
+  openRecentProject: (project: ProjectDescriptor) => void
   openFolder: () => Promise<void>
   framework: string
   worktree: string
@@ -115,6 +118,8 @@ interface OrbitState {
   setViewport: (viewport: Viewport) => void
 
   branch: string
+  pendingChanges: number
+  gitChanges: ReadonlyArray<GitChange>
   setBranch: (branch: string) => void
 
   engine: string
@@ -237,6 +242,11 @@ function OrbitStateProvider({ children }: { children: ReactNode }) {
 
   const openFolder = useCallback(() => mission.actions.openFolder(), [mission])
 
+  const openRecentProject = useCallback(
+    (project: ProjectDescriptor) => mission.actions.openProject(project),
+    [mission],
+  )
+
   const setStage = useCallback((stage: ProjectStage) => {
     mission.actions.setStage(stage)
   }, [mission])
@@ -358,6 +368,8 @@ function OrbitStateProvider({ children }: { children: ReactNode }) {
     projectName: summary.project,
     projectPath: summary.projectPath,
     workspaceIndex: kernelContext.workspace.index,
+    recentProjects: missionState.recentProjects,
+    openRecentProject,
     openFolder,
     framework: summary.framework,
     worktree: missionState.git.worktree,
@@ -377,6 +389,8 @@ function OrbitStateProvider({ children }: { children: ReactNode }) {
     viewport,
     setViewport,
     branch: missionState.git.branch,
+    pendingChanges: missionState.git.pendingChanges,
+    gitChanges: missionState.git.changes,
     setBranch,
     engine: activeProvider?.label ?? ENGINE_OPTIONS[0],
     setEngine,
@@ -421,6 +435,7 @@ function OrbitStateProvider({ children }: { children: ReactNode }) {
     logoutProvider,
     messages,
     missionState,
+    openRecentProject,
     kernelContext,
     openFile,
     openFolder,
