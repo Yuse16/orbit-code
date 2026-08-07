@@ -39,6 +39,7 @@ export interface MissionEventMap {
   GuidanceChanged: { guidance: MissionGuidance }
   NotificationRaised: { level: NotificationLevel; message: string; createdAt: string }
   PermissionRequested: PermissionRequest
+  PermissionResolved: Pick<PermissionRequest, 'id' | 'status'>
 }
 
 export type MissionEventType = keyof MissionEventMap

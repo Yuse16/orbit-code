@@ -115,6 +115,13 @@ export function reduceMissionState(state: MissionState, event: MissionEvent): Mi
         ...state,
         permissionRequests: [...state.permissionRequests, event.payload],
       }
+    case 'PermissionResolved':
+      return {
+        ...state,
+        permissionRequests: state.permissionRequests.map((request) =>
+          request.id === event.payload.id ? { ...request, status: event.payload.status } : request,
+        ),
+      }
     case 'ProjectClosed':
       return { ...state, project: createInitialMissionState().project }
     case 'GitStatusChanged':

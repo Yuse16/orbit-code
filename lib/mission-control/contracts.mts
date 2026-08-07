@@ -77,6 +77,8 @@ export interface MissionControlActions {
   connectProvider(providerId: ProviderId, detail?: string): void
   disconnectProvider(providerId: ProviderId, detail?: string): void
   requestCommand(command: string, cwd: string): void
+  approveCommand(id: string): Promise<void>
+  rejectCommand(id: string): void
 }
 
 /**

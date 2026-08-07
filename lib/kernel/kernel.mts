@@ -9,6 +9,7 @@ import { createKernelMissionRuntime, type KernelMissionRuntime } from './mission
 import type { Runtime } from '../runtime/runtime.mts'
 import type { RuntimeRegistry } from '../runtime/registry.mts'
 import type { WorkspaceAdapter } from '../runtime/adapters/workspace/index.mts'
+import type { ProcessManager, ProcessRecord } from '../runtime/process-manager.mts'
 import type { DesktopSystemAdapter } from '../runtime/adapters/system/index.mts'
 import type { DesktopClient } from '../mission-control/desktop-client.mts'
 import type {
@@ -88,6 +89,7 @@ export class Kernel {
   private state: KernelState
   private startedAt: string | null = null
   private permissionSequence = 0
+  private readonly processManager: ProcessManager | null
   private readonly listeners = new Set<KernelStateListener>()
   private readonly stopObserving: () => void
   private readonly now: () => string
@@ -100,6 +102,7 @@ export class Kernel {
       runtime?: Runtime
       systemAdapter?: DesktopSystemAdapter
       workspaceAdapter?: WorkspaceAdapter
+      processManager?: ProcessManager
     } = {},
   ) {
     this.now = now
@@ -110,6 +113,7 @@ export class Kernel {
     this.health = new KernelHealth(this.events)
     this.registry = new KernelRegistry()
     this.runtime = options.runtime ?? null
+    this.processManager = options.processManager ?? null
     this.mission = createKernelMissionRuntime({ ...options, now })
     ;(['capabilities', 'scheduler', 'dna', 'mission-control'] as const).forEach((module) =>
       this.registry.register(module),
@@ -236,6 +240,24 @@ export class Kernel {
       status: 'pending',
       createdAt: this.now(),
     })
+  }
+
+  async approveCommand(id: string): Promise<ProcessRecord | null> {
+    const request = this.mission.store.getSnapshot().permissionRequests.find(
+      (candidate) => candidate.id === id,
+    )
+    if (!request || request.status !== 'pending') return null
+    this.mission.events.emit('PermissionResolved', { id, status: 'approved' })
+    if (!this.processManager) return null
+    return this.processManager.start({ command: request.command, cwd: request.cwd, timeoutMs: 300_000 })
+  }
+
+  rejectCommand(id: string): void {
+    const request = this.mission.store.getSnapshot().permissionRequests.find(
+      (candidate) => candidate.id === id,
+    )
+    if (!request || request.status !== 'pending') return
+    this.mission.events.emit('PermissionResolved', { id, status: 'rejected' })
   }
 
   subscribe = (listener: KernelStateListener): (() => void) => {

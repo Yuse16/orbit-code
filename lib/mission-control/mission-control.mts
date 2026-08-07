@@ -18,6 +18,8 @@ export function createMissionControl(kernel: Kernel): MissionControl {
       connectProvider: (providerId, detail) => kernel.connectProvider(providerId, detail),
       disconnectProvider: (providerId, detail) => kernel.disconnectProvider(providerId, detail),
       requestCommand: (command, cwd) => kernel.requestCommand(command, cwd),
+      approveCommand: (id) => kernel.approveCommand(id).then(() => undefined),
+      rejectCommand: (id) => kernel.rejectCommand(id),
     },
     getKernelContext: () => kernel.getContext(),
     getKernelContextSnapshot: () => contextReader.getSnapshot(),

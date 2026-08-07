@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Plus, Trash2, Maximize2, ChevronDown } from 'lucide-react'
 import { TERMINAL_LINES } from '@/lib/orbit/mock-data'
-import { useMissionControl } from './mission-control-provider'
+import { useMissionControl, useMissionState } from './mission-control-provider'
 import { useOrbit } from './orbit-store'
 import { Dropdown, DropdownContent, DropdownItem, DropdownTrigger } from './primitives'
 
@@ -28,6 +28,7 @@ export function TerminalView({ compact = false }: { compact?: boolean }) {
   const [history, setHistory] = useState<string[]>(TERMINAL_LINES)
   const [input, setInput] = useState('')
   const mission = useMissionControl()
+  const missionState = useMissionState()
   const { projectPath } = useOrbit()
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -98,6 +99,29 @@ export function TerminalView({ compact = false }: { compact?: boolean }) {
         ref={scrollRef}
         className="flex-1 overflow-auto px-3 py-2 font-mono text-[13px] leading-relaxed"
       >
+        {missionState.permissionRequests.filter((request) => request.status === 'pending').map((request) => (
+          <div key={request.id} className="mb-2 rounded-md border border-warning/40 bg-warning/10 p-2 text-xs">
+            <p className="font-semibold text-warning">Permiso requerido</p>
+            <p className="mt-1 break-all text-foreground">{request.command}</p>
+            <p className="mt-1 truncate text-muted-foreground">Directorio: {request.cwd}</p>
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={() => void mission.actions.approveCommand(request.id)}
+                className="rounded border border-success/40 px-2 py-1 text-success hover:bg-success/10"
+              >
+                Autorizar
+              </button>
+              <button
+                type="button"
+                onClick={() => mission.actions.rejectCommand(request.id)}
+                className="rounded border border-danger/40 px-2 py-1 text-danger hover:bg-danger/10"
+              >
+                Rechazar
+              </button>
+            </div>
+          </div>
+        ))}
         {history.map((line, i) => (
           <div key={i} className={lineClass(line)}>
             {line === '' ? '\u00A0' : line}
