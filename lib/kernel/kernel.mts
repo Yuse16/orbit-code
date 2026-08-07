@@ -87,6 +87,7 @@ export class Kernel {
   private stopRuntimeContext: (() => void) | null = null
   private state: KernelState
   private startedAt: string | null = null
+  private permissionSequence = 0
   private readonly listeners = new Set<KernelStateListener>()
   private readonly stopObserving: () => void
   private readonly now: () => string
@@ -222,6 +223,19 @@ export class Kernel {
 
   disconnectProvider(providerId: ProviderId, detail?: string): void {
     this.mission.services.providers.disconnect(providerId, detail)
+  }
+
+  requestCommand(command: string, cwd: string): void {
+    const trimmed = command.trim()
+    if (!trimmed) return
+    this.mission.events.emit('PermissionRequested', {
+      id: `permission-${++this.permissionSequence}`,
+      action: 'run-command',
+      command: trimmed,
+      cwd,
+      status: 'pending',
+      createdAt: this.now(),
+    })
   }
 
   subscribe = (listener: KernelStateListener): (() => void) => {

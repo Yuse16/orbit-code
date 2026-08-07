@@ -70,3 +70,26 @@ test('MissionStore actualiza providers y build mediante eventos', () => {
 
   store.dispose()
 })
+
+test('MissionStore conserva solicitudes de comandos pendientes', () => {
+  const events = new EventBus()
+  const store = new MissionStore(events)
+  events.emit('PermissionRequested', {
+    id: 'permission-1',
+    action: 'run-command',
+    command: 'pnpm dev',
+    cwd: '/workspace',
+    status: 'pending',
+    createdAt: '2026-08-07T00:00:00.000Z',
+  })
+
+  assert.deepEqual(store.getSnapshot().permissionRequests[0], {
+    id: 'permission-1',
+    action: 'run-command',
+    command: 'pnpm dev',
+    cwd: '/workspace',
+    status: 'pending',
+    createdAt: '2026-08-07T00:00:00.000Z',
+  })
+  store.dispose()
+})

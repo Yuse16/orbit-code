@@ -136,6 +136,17 @@ export interface BuildState {
   error: string | null
 }
 
+export type PermissionRequestStatus = 'pending' | 'approved' | 'rejected'
+
+export interface PermissionRequest {
+  id: string
+  action: 'run-command'
+  command: string
+  cwd: string
+  status: PermissionRequestStatus
+  createdAt: string
+}
+
 export interface MissionNotification {
   id: string
   level: NotificationLevel
@@ -167,6 +178,7 @@ export interface MissionState {
   desktop: DesktopState
   build: BuildState
   notifications: NotificationState
+  permissionRequests: PermissionRequest[]
   guidance: MissionGuidance
 }
 

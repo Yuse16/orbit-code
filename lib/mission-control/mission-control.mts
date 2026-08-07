@@ -17,6 +17,7 @@ export function createMissionControl(kernel: Kernel): MissionControl {
         kernel.activateProvider(primaryProviderId, secondaryProviderId),
       connectProvider: (providerId, detail) => kernel.connectProvider(providerId, detail),
       disconnectProvider: (providerId, detail) => kernel.disconnectProvider(providerId, detail),
+      requestCommand: (command, cwd) => kernel.requestCommand(command, cwd),
     },
     getKernelContext: () => kernel.getContext(),
     getKernelContextSnapshot: () => contextReader.getSnapshot(),
