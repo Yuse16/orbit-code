@@ -1,8 +1,13 @@
 use serde::Serialize;
+use std::collections::HashMap;
 use std::fs;
+use std::io::Read;
 use std::path::Path;
 use std::process::{Command, Stdio};
+use std::sync::{Arc, Mutex};
+use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use tauri::{Emitter, State};
 use tauri_plugin_dialog::DialogExt;
 
 const MAX_DEPTH: usize = 8;
@@ -76,6 +81,28 @@ struct GitStatusResult {
     pending_changes: usize,
     last_summary: String,
     changes: Vec<GitChange>,
+}
+
+#[derive(Clone, Default)]
+struct ProcessState {
+    processes: Arc<Mutex<HashMap<String, Arc<Mutex<std::process::Child>>>>>,
+}
+
+#[derive(Debug, Serialize)]
+struct ProcessStartResult {
+    pid: u32,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct ProcessOutputEvent {
+    stream: String,
+    chunk: String,
+}
+
+#[derive(Debug, Serialize, Clone)]
+struct ProcessExitEvent {
+    code: Option<i32>,
 }
 
 fn ignored_directory(name: &str) -> bool {
@@ -422,11 +449,159 @@ fn git_status(root: String) -> Result<GitStatusResult, String> {
     })
 }
 
+fn shell_command(shell: &str, command: &str) -> Result<(String, Vec<String>), String> {
+    let result = match shell {
+        "bash" => ("bash", vec!["-lc", command]),
+        "zsh" => ("zsh", vec!["-lc", command]),
+        "fish" => ("fish", vec!["-c", command]),
+        "pwsh" => ("pwsh", vec!["-NoLogo", "-NoProfile", "-Command", command]),
+        "powershell" => ("powershell", vec!["-NoProfile", "-Command", command]),
+        "cmd" => ("cmd", vec!["/C", command]),
+        _ => return Err(format!("Shell no permitida: {shell}")),
+    };
+    Ok((
+        result.0.to_string(),
+        result.1.into_iter().map(str::to_string).collect(),
+    ))
+}
+
+fn spawn_output_reader<R: Read + Send + 'static>(
+    app: tauri::AppHandle,
+    event: String,
+    stream: &'static str,
+    mut output: R,
+) {
+    thread::spawn(move || {
+        let mut buffer = [0_u8; 4096];
+        loop {
+            match output.read(&mut buffer) {
+                Ok(0) | Err(_) => break,
+                Ok(size) => {
+                    let payload = ProcessOutputEvent {
+                        stream: stream.to_string(),
+                        chunk: String::from_utf8_lossy(&buffer[..size]).into_owned(),
+                    };
+                    let _ = app.emit(&event, payload);
+                }
+            }
+        }
+    });
+}
+
+#[tauri::command]
+fn process_start(
+    app: tauri::AppHandle,
+    state: State<'_, ProcessState>,
+    id: String,
+    command: String,
+    cwd: String,
+    shell: String,
+    timeout_ms: u64,
+) -> Result<ProcessStartResult, String> {
+    let directory = Path::new(&cwd);
+    if !directory.is_absolute() || !directory.is_dir() {
+        return Err("El directorio del proceso no es válido".to_string());
+    }
+    if command.trim().is_empty() || timeout_ms == 0 {
+        return Err("Comando o timeout inválido".to_string());
+    }
+    let (program, args) = shell_command(&shell, &command)?;
+    let mut child = Command::new(program)
+        .args(args)
+        .current_dir(directory)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|error| format!("No se pudo iniciar el proceso: {error}"))?;
+    let pid = child.id();
+    let stdout = child.stdout.take();
+    let stderr = child.stderr.take();
+    let shared = Arc::new(Mutex::new(child));
+    state
+        .processes
+        .lock()
+        .map_err(|_| "Estado de procesos bloqueado".to_string())?
+        .insert(id.clone(), shared.clone());
+
+    if let Some(output) = stdout {
+        spawn_output_reader(
+            app.clone(),
+            format!("process-output:{id}"),
+            "stdout",
+            output,
+        )
+    }
+    if let Some(output) = stderr {
+        spawn_output_reader(
+            app.clone(),
+            format!("process-output:{id}"),
+            "stderr",
+            output,
+        )
+    }
+
+    let app = app.clone();
+    let process_id = id.clone();
+    let processes = state.processes.clone();
+    thread::spawn(move || {
+        let deadline = Instant::now() + Duration::from_millis(timeout_ms);
+        let exit_code = loop {
+            let status = shared
+                .lock()
+                .ok()
+                .and_then(|mut child| child.try_wait().ok().flatten());
+            if let Some(status) = status {
+                break status.code();
+            }
+            if Instant::now() >= deadline {
+                if let Ok(mut child) = shared.lock() {
+                    let _ = child.kill();
+                }
+                break None;
+            }
+            thread::sleep(Duration::from_millis(25));
+        };
+        let exit_event = format!("process-exit:{process_id}");
+        let _ = app.emit(&exit_event, ProcessExitEvent { code: exit_code });
+        if let Ok(mut processes) = processes.lock() {
+            processes.remove(&process_id);
+        }
+    });
+
+    Ok(ProcessStartResult { pid })
+}
+
+#[tauri::command]
+fn process_cancel(state: State<'_, ProcessState>, id: String) -> Result<(), String> {
+    let process = state
+        .processes
+        .lock()
+        .map_err(|_| "Estado de procesos bloqueado".to_string())?
+        .get(&id)
+        .cloned();
+    let Some(process) = process else {
+        return Ok(());
+    };
+    let result = process
+        .lock()
+        .map_err(|_| "Proceso bloqueado".to_string())?
+        .kill()
+        .map_err(|error| format!("No se pudo cancelar el proceso: {error}"));
+    result
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(ProcessState::default())
         .plugin(tauri_plugin_dialog::init())
-        .invoke_handler(tauri::generate_handler![git_status, open_folder])
+        .invoke_handler(tauri::generate_handler![
+            git_status,
+            open_folder,
+            process_cancel,
+            process_start
+        ])
         .run(tauri::generate_context!())
         .expect("error while running Orbit Code");
 }

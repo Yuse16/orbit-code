@@ -90,6 +90,7 @@ export class Kernel {
   private startedAt: string | null = null
   private permissionSequence = 0
   private readonly processManager: ProcessManager | null
+  private readonly stopProcessManager: (() => void) | null
   private readonly listeners = new Set<KernelStateListener>()
   private readonly stopObserving: () => void
   private readonly now: () => string
@@ -114,6 +115,11 @@ export class Kernel {
     this.registry = new KernelRegistry()
     this.runtime = options.runtime ?? null
     this.processManager = options.processManager ?? null
+    this.stopProcessManager = this.processManager
+      ? this.processManager.subscribe((process) => {
+          this.mission.events.emit('ProcessUpdated', { process })
+        })
+      : null
     this.mission = createKernelMissionRuntime({ ...options, now })
     ;(['capabilities', 'scheduler', 'dna', 'mission-control'] as const).forEach((module) =>
       this.registry.register(module),
@@ -299,6 +305,7 @@ export class Kernel {
     this.stopObserving()
     this.stopContextPublishing()
     this.stopMissionContext()
+    this.stopProcessManager?.()
     this.stopRuntimeContext?.()
     this.context.dispose()
     this.listeners.clear()

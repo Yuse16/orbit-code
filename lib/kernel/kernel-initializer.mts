@@ -6,7 +6,7 @@ import type { WorkspaceAdapter } from '../runtime/adapters/workspace/index.mts'
 import type { DesktopSystemAdapter } from '../runtime/adapters/system/index.mts'
 import type { DesktopClient } from '../mission-control/desktop-client.mts'
 import type { MissionGuidance } from '../mission-control/types.mts'
-import type { ProcessManager } from '../runtime/process-manager.mts'
+import { createDefaultProcessManager, type ProcessManager } from '../runtime/process-manager.mts'
 
 export interface KernelInitializerOptions {
   now?: () => string
@@ -34,7 +34,7 @@ export class KernelInitializer {
       runtime: this.options.runtime ?? createDefaultRuntime({ now: this.options.now }),
       systemAdapter: this.options.systemAdapter,
       workspaceAdapter: this.options.workspaceAdapter,
-      processManager: this.options.processManager,
+      processManager: this.options.processManager ?? createDefaultProcessManager(),
     })
     kernel.loadDNA(this.options.dna ?? createMockOrbitDNA())
     kernel.start()

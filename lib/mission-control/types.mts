@@ -179,6 +179,7 @@ export interface MissionState {
   build: BuildState
   notifications: NotificationState
   permissionRequests: PermissionRequest[]
+  processes: import('../runtime/process-manager.mts').ProcessRecord[]
   guidance: MissionGuidance
 }
 

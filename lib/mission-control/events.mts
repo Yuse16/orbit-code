@@ -12,6 +12,7 @@ import type {
   ProviderConnectionStatus,
   ProviderId,
 } from './types.mts'
+import type { ProcessRecord } from '../runtime/process-manager.mts'
 
 export interface MissionEventMap {
   ProjectOpened: { project: ProjectDescriptor; openedAt: string }
@@ -40,6 +41,7 @@ export interface MissionEventMap {
   NotificationRaised: { level: NotificationLevel; message: string; createdAt: string }
   PermissionRequested: PermissionRequest
   PermissionResolved: Pick<PermissionRequest, 'id' | 'status'>
+  ProcessUpdated: { process: ProcessRecord }
 }
 
 export type MissionEventType = keyof MissionEventMap

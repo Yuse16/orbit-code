@@ -1,9 +1,12 @@
+import { TauriProcessRunner } from './tauri-process-runner.mts'
+
 export type ProcessStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled'
 
 export interface ProcessSpec {
   command: string
   cwd: string
   timeoutMs: number
+  shell?: string
 }
 
 export interface ProcessRecord {
@@ -36,6 +39,8 @@ export interface ProcessRunner {
   ): Promise<ProcessHandle>
 }
 
+export type ProcessListener = (record: ProcessRecord) => void
+
 const cloneRecord = (record: ProcessRecord): ProcessRecord => ({
   ...record,
   spec: { ...record.spec },
@@ -47,6 +52,7 @@ export class ProcessManager {
   private sequence = 0
   private readonly runner: ProcessRunner
   private readonly now: () => string
+  private readonly listeners = new Set<ProcessListener>()
 
   constructor(runner: ProcessRunner, now: () => string = () => new Date().toISOString()) {
     this.runner = runner
@@ -69,6 +75,7 @@ export class ProcessManager {
       error: null,
     }
     this.records.set(id, record)
+    this.notify(record)
 
     try {
       const handle = await this.runner.start(spec, {
@@ -84,6 +91,7 @@ export class ProcessManager {
         current.pid = handle.pid
         current.startedAt = this.now()
       }
+      this.notify(current)
     } catch (error) {
       this.fail(id, error instanceof Error ? error.message : String(error))
     }
@@ -99,18 +107,25 @@ export class ProcessManager {
     return [...this.records.values()].map(cloneRecord)
   }
 
+  subscribe(listener: ProcessListener): () => void {
+    this.listeners.add(listener)
+    return () => this.listeners.delete(listener)
+  }
+
   async cancel(id: string): Promise<ProcessRecord> {
     const record = this.require(id)
     if (record.status !== 'running' && record.status !== 'queued') return cloneRecord(record)
     await this.handles.get(id)?.cancel()
     record.status = 'cancelled'
     record.finishedAt = this.now()
+    this.notify(record)
     return cloneRecord(record)
   }
 
   private append(id: string, channel: 'stdout' | 'stderr', chunk: string): void {
     const record = this.require(id)
     record[channel] += chunk
+    this.notify(record)
   }
 
   private finish(id: string, exitCode: number | null): void {
@@ -119,6 +134,7 @@ export class ProcessManager {
     record.status = exitCode === 0 ? 'succeeded' : 'failed'
     record.exitCode = exitCode
     record.finishedAt = this.now()
+    this.notify(record)
   }
 
   private fail(id: string, error: string): void {
@@ -126,6 +142,12 @@ export class ProcessManager {
     record.status = 'failed'
     record.error = error
     record.finishedAt = this.now()
+    this.notify(record)
+  }
+
+  private notify(record: ProcessRecord): void {
+    const snapshot = cloneRecord(record)
+    this.listeners.forEach((listener) => listener(snapshot))
   }
 
   private validate(spec: ProcessSpec): void {
@@ -134,6 +156,9 @@ export class ProcessManager {
     if (!Number.isFinite(spec.timeoutMs) || spec.timeoutMs <= 0) {
       throw new Error('El timeout del proceso debe ser positivo')
     }
+    if (spec.shell && !['bash', 'zsh', 'fish', 'pwsh', 'powershell', 'cmd'].includes(spec.shell)) {
+      throw new Error(`Shell no permitida: ${spec.shell}`)
+    }
   }
 
   private require(id: string): ProcessRecord {
@@ -141,4 +166,17 @@ export class ProcessManager {
     if (!record) throw new Error(`Proceso desconocido: ${id}`)
     return record
   }
+}
+
+class UnavailableProcessRunner implements ProcessRunner {
+  async start(): Promise<ProcessHandle> {
+    throw new Error('El ProcessRunner nativo solo está disponible dentro de Tauri')
+  }
+}
+
+export function createDefaultProcessManager(): ProcessManager {
+  if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
+    return new ProcessManager(new TauriProcessRunner())
+  }
+  return new ProcessManager(new UnavailableProcessRunner())
 }

@@ -122,6 +122,16 @@ export function TerminalView({ compact = false }: { compact?: boolean }) {
             </div>
           </div>
         ))}
+        {missionState.processes.map((process) => (
+          <div key={process.id} className="mb-2 whitespace-pre-wrap text-muted-foreground">
+            {process.stdout}
+            {process.stderr}
+            {process.status === 'running' && '\n○ Proceso activo…'}
+            {process.status === 'succeeded' && '\n✓ Proceso terminado'}
+            {process.status === 'failed' && `\n✕ Proceso falló: ${process.error ?? 'error desconocido'}`}
+            {process.status === 'cancelled' && '\n○ Proceso cancelado'}
+          </div>
+        ))}
         {history.map((line, i) => (
           <div key={i} className={lineClass(line)}>
             {line === '' ? '\u00A0' : line}
