@@ -21,19 +21,19 @@ import {
   DropdownTrigger,
 } from './primitives'
 import { cn } from '@/lib/utils'
+import type { GitChangeStatus } from '@/lib/mission-control/types.mts'
 
-const CHANGES: { status: 'M' | 'A' | 'D'; path: string }[] = [
-  { status: 'M', path: 'components/TaskCard.tsx' },
-  { status: 'A', path: 'app/promociones/page.tsx' },
-  { status: 'M', path: 'lib/promotions.ts' },
-]
-
-const STATUS_COLOR = { M: 'text-warning', A: 'text-success', D: 'text-danger' }
+const STATUS_COLOR: Record<GitChangeStatus, string> = {
+  M: 'text-warning',
+  A: 'text-success',
+  D: 'text-danger',
+  '?': 'text-muted-foreground',
+}
 
 const BRANCHES = ['main', 'feat/promociones', 'fix/tarjetas']
 
 export function GitPanel() {
-  const { branch, setBranch, selectFile, setTab } = useOrbit()
+  const { branch, pendingChanges, gitChanges, setBranch, selectFile, setTab } = useOrbit()
 
   return (
     <section className="border-t border-border px-2 py-3">
@@ -100,9 +100,9 @@ export function GitPanel() {
       </Dropdown>
 
       {/* Lista de cambios */}
-      <p className="mt-3 px-1 text-xs text-muted-foreground">Cambios (3)</p>
+      <p className="mt-3 px-1 text-xs text-muted-foreground">Cambios ({pendingChanges})</p>
       <ul className="mt-1 space-y-0.5">
-        {CHANGES.map((c) => (
+        {gitChanges.map((c) => (
           <li key={c.path}>
             <button
               onClick={() => selectFile(c.path)}

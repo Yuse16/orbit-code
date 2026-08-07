@@ -38,7 +38,7 @@ import type {
   Viewport,
   WorkbenchTab,
 } from '@/lib/orbit/types'
-import type { ProjectDescriptor } from '@/lib/mission-control/types.mts'
+import type { GitChange, ProjectDescriptor } from '@/lib/mission-control/types.mts'
 import type { WorkspaceIndexSnapshot } from '@/lib/runtime/adapters/workspace/indexer.mts'
 import {
   MissionControlProvider,
@@ -118,6 +118,8 @@ interface OrbitState {
   setViewport: (viewport: Viewport) => void
 
   branch: string
+  pendingChanges: number
+  gitChanges: ReadonlyArray<GitChange>
   setBranch: (branch: string) => void
 
   engine: string
@@ -387,6 +389,8 @@ function OrbitStateProvider({ children }: { children: ReactNode }) {
     viewport,
     setViewport,
     branch: missionState.git.branch,
+    pendingChanges: missionState.git.pendingChanges,
+    gitChanges: missionState.git.changes,
     setBranch,
     engine: activeProvider?.label ?? ENGINE_OPTIONS[0],
     setEngine,
