@@ -141,6 +141,7 @@ export interface MissionGuidance {
 
 export interface MissionState {
   project: ProjectState
+  recentProjects: ProjectDescriptor[]
   git: GitState
   localhost: LocalhostState
   providers: ProviderState
