@@ -180,7 +180,7 @@ export class Kernel {
       id: `workspace:${result.root}`,
       name: result.projectName,
       path: result.root,
-      framework: 'unknown',
+      framework: result.stack.framework,
     })
     this.workspacePublisher.publish(this.workspaceState)
     await this.refreshGitStatus(result.root)

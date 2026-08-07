@@ -12,6 +12,15 @@ export interface WorkspaceOpenResult {
   root: string
   projectName: string
   index: WorkspaceIndexSnapshot
+  stack: WorkspaceStack
+}
+
+export interface WorkspaceStack {
+  framework: string
+  language: string
+  packageManager: string
+  buildSystem: string
+  confidence: number
 }
 
 export interface GitStatusResult {
