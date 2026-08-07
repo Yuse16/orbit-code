@@ -4,6 +4,7 @@ import { Search, ChevronDown, Settings, HelpCircle } from 'lucide-react'
 import { OrbitLogo } from './orbit-logo'
 import { ProjectSelector } from './project-selector'
 import { FileTree } from './file-tree'
+import { useOrbit } from './orbit-store'
 import { GitPanel } from './git-panel'
 import { RecentProjects } from './recent-projects'
 import {
@@ -16,6 +17,8 @@ import {
 } from './primitives'
 
 export function ProjectExplorer() {
+  const { searchQuery, setSearchQuery } = useOrbit()
+
   return (
     <aside className="flex w-[276px] shrink-0 flex-col border-r border-border bg-panel">
       {/* Encabezado con marca */}
@@ -51,6 +54,8 @@ export function ProjectExplorer() {
           <input
             type="text"
             placeholder="Buscar archivos…"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
             className="min-w-0 flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
             aria-label="Buscar archivos"
           />

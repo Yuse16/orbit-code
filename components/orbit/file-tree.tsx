@@ -18,6 +18,7 @@ import type { FileNode, GitStatus } from '@/lib/orbit/types'
 import type { WorkspaceIndexNode } from '@/lib/runtime/adapters/workspace/indexer.mts'
 import { useOrbit } from './orbit-store'
 import { cn } from '@/lib/utils'
+import { filterFileNodes } from '@/lib/orbit/file-search.mts'
 
 function fileIcon(node: FileNode): { Icon: LucideIcon; color: string } {
   if (node.id === 'supabase') return { Icon: Database, color: 'text-success' }
@@ -131,8 +132,9 @@ function TreeNode({ node, depth }: { node: FileNode; depth: number }) {
 }
 
 export function FileTree() {
-  const { workspaceIndex } = useOrbit()
-  const nodes = workspaceIndex ? workspaceIndex.nodes.map(toFileNode) : FILE_TREE
+  const { workspaceIndex, searchQuery } = useOrbit()
+  const allNodes = workspaceIndex ? workspaceIndex.nodes.map(toFileNode) : FILE_TREE
+  const nodes = filterFileNodes(allNodes, searchQuery)
 
   return (
     <div>
@@ -140,9 +142,11 @@ export function FileTree() {
         Explorador
       </p>
       <ul className="space-y-0.5">
-        {nodes.map((node) => (
-          <TreeNode key={node.id} node={node} depth={0} />
-        ))}
+        {nodes.length > 0 ? (
+          nodes.map((node) => <TreeNode key={node.id} node={node} depth={0} />)
+        ) : (
+          <li className="px-2 py-2 text-xs text-muted-foreground">Sin coincidencias</li>
+        )}
       </ul>
     </div>
   )
