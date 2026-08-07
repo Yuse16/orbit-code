@@ -34,6 +34,7 @@ export function createInitialMissionState(): MissionState {
       status: 'clean',
       pendingChanges: 0,
       lastSummary: 'Sin repositorio abierto',
+      changes: [],
     },
     localhost: { status: 'stopped', url: null, port: null, error: null },
     providers: {

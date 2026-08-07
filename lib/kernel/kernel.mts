@@ -183,6 +183,24 @@ export class Kernel {
       framework: 'unknown',
     })
     this.workspacePublisher.publish(this.workspaceState)
+    await this.refreshGitStatus(result.root)
+  }
+
+  async refreshGitStatus(root: string): Promise<void> {
+    try {
+      const git = await this.mission.services.desktop.client.readGitStatus(root)
+      this.updateGitStatus(git)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      this.updateGitStatus({
+        branch: '—',
+        worktree: root,
+        status: 'clean',
+        pendingChanges: 0,
+        lastSummary: `Git no disponible: ${message}`,
+        changes: [],
+      })
+    }
   }
 
   updateGitStatus(git: Partial<GitState>): void {

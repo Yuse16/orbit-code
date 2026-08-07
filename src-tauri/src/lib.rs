@@ -1,7 +1,8 @@
 use serde::Serialize;
 use std::fs;
 use std::path::Path;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::process::{Command, Stdio};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tauri_plugin_dialog::DialogExt;
 
 const MAX_DEPTH: usize = 8;
@@ -35,6 +36,24 @@ struct WorkspaceOpenResult {
     root: String,
     project_name: String,
     index: WorkspaceIndexSnapshot,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct GitChange {
+    status: String,
+    path: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct GitStatusResult {
+    branch: String,
+    worktree: String,
+    status: String,
+    pending_changes: usize,
+    last_summary: String,
+    changes: Vec<GitChange>,
 }
 
 fn ignored_directory(name: &str) -> bool {
@@ -145,11 +164,108 @@ async fn open_folder(app: tauri::AppHandle) -> Result<Option<WorkspaceOpenResult
     }))
 }
 
+#[tauri::command]
+fn git_status(root: String) -> Result<GitStatusResult, String> {
+    let path = Path::new(&root);
+    if !path.is_absolute() || !path.is_dir() {
+        return Err("La raíz del proyecto no es válida".to_string());
+    }
+
+    let mut child = Command::new("git")
+        .args(["-C", &root, "status", "--porcelain=v1", "--branch"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|error| format!("No se pudo ejecutar Git: {error}"))?;
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        if child
+            .try_wait()
+            .map_err(|error| format!("No se pudo consultar Git: {error}"))?
+            .is_some()
+        {
+            break;
+        }
+        if Instant::now() >= deadline {
+            let _ = child.kill();
+            return Err("Git excedió el tiempo máximo de lectura".to_string());
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    let output = child
+        .wait_with_output()
+        .map_err(|error| format!("No se pudo leer la salida de Git: {error}"))?;
+    if !output.status.success() {
+        let error = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        return Err(if error.is_empty() {
+            "La carpeta no es un repositorio Git".to_string()
+        } else {
+            error
+        });
+    }
+
+    let text = String::from_utf8_lossy(&output.stdout);
+    let mut lines = text.lines();
+    let branch_line = lines.next().unwrap_or_default();
+    let branch = branch_line
+        .strip_prefix("## ")
+        .unwrap_or("HEAD")
+        .split("...")
+        .next()
+        .unwrap_or("HEAD")
+        .to_string();
+    let mut changes = Vec::new();
+    for line in lines {
+        if line.len() < 4 {
+            continue;
+        }
+        let code = &line[..2];
+        let path = line[3..]
+            .split(" -> ")
+            .last()
+            .unwrap_or(&line[3..])
+            .to_string();
+        let status = if code == "??" {
+            "?"
+        } else if code.contains('D') {
+            "D"
+        } else if code.contains('A') {
+            "A"
+        } else {
+            "M"
+        };
+        changes.push(GitChange {
+            status: status.to_string(),
+            path,
+        });
+    }
+    let pending_changes = changes.len();
+    let status = if pending_changes == 0 {
+        "clean"
+    } else {
+        "changes-pending"
+    };
+    let last_summary = if pending_changes == 0 {
+        "Sin cambios pendientes".to_string()
+    } else {
+        format!("{pending_changes} cambios pendientes")
+    };
+
+    Ok(GitStatusResult {
+        branch,
+        worktree: root,
+        status: status.to_string(),
+        pending_changes,
+        last_summary,
+        changes,
+    })
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .invoke_handler(tauri::generate_handler![open_folder])
+        .invoke_handler(tauri::generate_handler![git_status, open_folder])
         .run(tauri::generate_context!())
         .expect("error while running Orbit Code");
 }
