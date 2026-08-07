@@ -70,6 +70,13 @@ test('El Kernel compone el workspace recibido por el puente DesktopClient', asyn
       return {
         root: '/proyectos/real',
         projectName: 'real',
+        stack: {
+          framework: 'next',
+          language: 'typescript',
+          packageManager: 'pnpm',
+          buildSystem: 'next',
+          confidence: 0.57,
+        },
         index: {
           root: '/proyectos/real',
           nodes: [
@@ -95,6 +102,7 @@ test('El Kernel compone el workspace recibido por el puente DesktopClient', asyn
   await kernel.openFolder()
 
   assert.equal(kernel.getContextSnapshot().mission.project.path, '/proyectos/real')
+  assert.equal(kernel.getContextSnapshot().mission.project.framework, 'next')
   assert.equal(kernel.getContextSnapshot().workspace.index?.root, '/proyectos/real')
   assert.equal(kernel.getContextSnapshot().workspace.index?.folderCount, 1)
   kernel.dispose()

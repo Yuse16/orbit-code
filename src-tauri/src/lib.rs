@@ -36,6 +36,17 @@ struct WorkspaceOpenResult {
     root: String,
     project_name: String,
     index: WorkspaceIndexSnapshot,
+    stack: WorkspaceStack,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WorkspaceStack {
+    framework: String,
+    language: String,
+    package_manager: String,
+    build_system: String,
+    confidence: f32,
 }
 
 #[derive(Debug, Serialize)]
@@ -68,11 +79,101 @@ fn extension(name: &str) -> Option<String> {
     (!value.is_empty()).then_some(value)
 }
 
+fn stack_signal(name: &str, is_directory: bool) -> bool {
+    is_directory && matches!(name, "src-tauri" | "app" | "pages")
+        || !is_directory
+            && (matches!(
+                name,
+                "package.json"
+                    | "Cargo.toml"
+                    | "tsconfig.json"
+                    | "pnpm-lock.yaml"
+                    | "pnpm-workspace.yaml"
+                    | "package-lock.json"
+                    | "yarn.lock"
+                    | "bun.lockb"
+                    | "vite.config.ts"
+                    | "vite.config.js"
+                    | "next.config.ts"
+                    | "next.config.js"
+                    | "astro.config.ts"
+                    | "nuxt.config.ts"
+                    | "angular.json"
+            ) || name.starts_with("next.config.")
+                || name.starts_with("vite.config."))
+}
+
+fn detect_stack(signals: &[String]) -> WorkspaceStack {
+    let has = |name: &str| signals.iter().any(|signal| signal == name);
+    let has_prefix = |prefix: &str| signals.iter().any(|signal| signal.starts_with(prefix));
+    let framework = if has_prefix("next.config.") {
+        "next"
+    } else if has_prefix("vite.config.") {
+        "vite"
+    } else if has_prefix("astro.config.") {
+        "astro"
+    } else if has_prefix("nuxt.config.") {
+        "nuxt"
+    } else if has("angular.json") {
+        "angular"
+    } else if has("src-tauri") {
+        "tauri"
+    } else if has("Cargo.toml") {
+        "cargo"
+    } else if has("package.json") {
+        "node"
+    } else {
+        "unknown"
+    };
+    let language = if has("Cargo.toml") {
+        "rust"
+    } else if has("tsconfig.json") {
+        "typescript"
+    } else if has("package.json") {
+        "javascript"
+    } else {
+        "unknown"
+    };
+    let package_manager = if has("pnpm-lock.yaml") || has("pnpm-workspace.yaml") {
+        "pnpm"
+    } else if has("yarn.lock") {
+        "yarn"
+    } else if has("bun.lockb") {
+        "bun"
+    } else if has("package-lock.json") {
+        "npm"
+    } else if has("Cargo.toml") {
+        "cargo"
+    } else {
+        "unknown"
+    };
+    let build_system = if has_prefix("next.config.") {
+        "next"
+    } else if has_prefix("vite.config.") {
+        "vite"
+    } else if has("Cargo.toml") {
+        "cargo"
+    } else if has("package.json") {
+        "node"
+    } else {
+        "unknown"
+    };
+    let confidence = (0.25 + signals.len() as f32 * 0.08).min(1.0);
+    WorkspaceStack {
+        framework: framework.to_string(),
+        language: language.to_string(),
+        package_manager: package_manager.to_string(),
+        build_system: build_system.to_string(),
+        confidence,
+    }
+}
+
 fn read_nodes(
     directory: &Path,
     relative_parent: &str,
     depth: usize,
     counts: &mut (usize, usize, usize),
+    signals: &mut Vec<String>,
 ) -> Result<Vec<WorkspaceIndexNode>, String> {
     let mut entries = fs::read_dir(directory)
         .map_err(|error| format!("No se pudo leer {}: {error}", directory.display()))?
@@ -102,7 +203,10 @@ fn read_nodes(
             if ignored_directory(&name) || depth >= MAX_DEPTH {
                 continue;
             }
-            let children = read_nodes(&path, &relative, depth + 1, counts)?;
+            if relative_parent.is_empty() && stack_signal(&name, true) {
+                signals.push(name.clone());
+            }
+            let children = read_nodes(&path, &relative, depth + 1, counts, signals)?;
             counts.0 += 1;
             counts.2 = counts.2.max(depth + 1);
             nodes.push(WorkspaceIndexNode {
@@ -114,6 +218,9 @@ fn read_nodes(
                 children: Some(children),
             });
         } else if metadata.is_file() {
+            if relative_parent.is_empty() && stack_signal(&name, false) {
+                signals.push(name.clone());
+            }
             counts.1 += 1;
             counts.2 = counts.2.max(depth + 1);
             nodes.push(WorkspaceIndexNode {
@@ -143,7 +250,8 @@ async fn open_folder(app: tauri::AppHandle) -> Result<Option<WorkspaceOpenResult
         .unwrap_or("Proyecto")
         .to_string();
     let mut counts = (0, 0, 0);
-    let nodes = read_nodes(&root, "", 0, &mut counts)?;
+    let mut signals = Vec::new();
+    let nodes = read_nodes(&root, "", 0, &mut counts, &mut signals)?;
     let indexed_at = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_err(|error| format!("Reloj del sistema inválido: {error}"))?
@@ -161,6 +269,7 @@ async fn open_folder(app: tauri::AppHandle) -> Result<Option<WorkspaceOpenResult
             depth: counts.2,
             indexed_at,
         },
+        stack: detect_stack(&signals),
     }))
 }
 
