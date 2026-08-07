@@ -181,6 +181,7 @@ export class Kernel {
       name: result.projectName,
       path: result.root,
       framework: result.stack.framework,
+      packageJson: result.packageJson,
     })
     this.workspacePublisher.publish(this.workspaceState)
     await this.refreshGitStatus(result.root)
