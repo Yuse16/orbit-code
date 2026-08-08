@@ -65,6 +65,7 @@ export function createInitialMissionState(): MissionState {
     },
     build: { status: 'idle', command: null, startedAt: null, finishedAt: null, error: null },
     notifications: { items: [], unreadCount: 0 },
+    permissionRequests: [],
     guidance: initialGuidance,
   }
 }
@@ -108,6 +109,11 @@ export function reduceMissionState(state: MissionState, event: MissionEvent): Mi
         ...state,
         project: { ...event.payload.project, status: 'open', openedAt: event.payload.openedAt },
         recentProjects: updateRecentProjects(state.recentProjects, event.payload.project),
+      }
+    case 'PermissionRequested':
+      return {
+        ...state,
+        permissionRequests: [...state.permissionRequests, event.payload],
       }
     case 'ProjectClosed':
       return { ...state, project: createInitialMissionState().project }

@@ -9,6 +9,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Plus, Trash2, Maximize2, ChevronDown } from 'lucide-react'
 import { TERMINAL_LINES } from '@/lib/orbit/mock-data'
+import { useMissionControl } from './mission-control-provider'
+import { useOrbit } from './orbit-store'
 import { Dropdown, DropdownContent, DropdownItem, DropdownTrigger } from './primitives'
 
 const SHELLS = ['bash', 'zsh', 'fish', 'pwsh']
@@ -25,6 +27,8 @@ export function TerminalView({ compact = false }: { compact?: boolean }) {
   const [shell, setShell] = useState('bash')
   const [history, setHistory] = useState<string[]>(TERMINAL_LINES)
   const [input, setInput] = useState('')
+  const mission = useMissionControl()
+  const { projectPath } = useOrbit()
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -35,11 +39,11 @@ export function TerminalView({ compact = false }: { compact?: boolean }) {
     e.preventDefault()
     const cmd = input.trim()
     if (!cmd) return
-    // [tauri] ejecutar comando real y transmitir stdout/stderr
     const out =
       cmd === 'clear'
         ? []
-        : [`$ ${cmd}`, `simulación: "${cmd}" no ejecuta procesos reales todavía.`]
+        : [`$ ${cmd}`, '○ Permiso requerido antes de ejecutar este comando.']
+    if (cmd !== 'clear') mission.actions.requestCommand(cmd, projectPath)
     setHistory((h) => (cmd === 'clear' ? [] : [...h, ...out]))
     setInput('')
   }

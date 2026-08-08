@@ -6,6 +6,7 @@ import type {
   LocalhostStatus,
   MissionGuidance,
   NotificationLevel,
+  PermissionRequest,
   ProjectDescriptor,
   ProjectStage,
   ProviderConnectionStatus,
@@ -37,6 +38,7 @@ export interface MissionEventMap {
   DesktopDetected: { platform: HostPlatform; platformLabel: string; appVersion: string }
   GuidanceChanged: { guidance: MissionGuidance }
   NotificationRaised: { level: NotificationLevel; message: string; createdAt: string }
+  PermissionRequested: PermissionRequest
 }
 
 export type MissionEventType = keyof MissionEventMap
